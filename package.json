@@ -1,10 +1,11 @@
 {
-  "name": "lx-netease-music-mobile",
-  "version": "1.8.85",
-  "versionCode": 70,
+  "name": "lx-lxwalnut-music-mobile",
+  "version": "26.07.02",
+  "versionCode": 260702,
   "private": true,
   "scripts": {
     "dev": "react-native run-android --active-arch-only",
+    "dev:no-flipper": "set NO_FLIPPER=1 && react-native run-android --active-arch-only",
     "start": "react-native start --experimental-debugger",
     "sc": "react-native start --reset-cache",
     "rd": "react-devtools",
@@ -26,21 +27,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/souvenp/lx-netease-music-mobile.git"
+    "url": "git+https://github.com/WalnutBai/lx-lxwalnut-music-mobile.git"
   },
   "keywords": [
     "music-player",
     "react-native-app"
   ],
   "author": {
-    "name": "souvenp",
-    "email": "lyswhut@qq.com"
+    "name": "WalnutBai",
+    "email": "WalnutHyper@foxmail.com"
   },
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/souvenp/lx-netease-music-mobile/issues"
+    "url": "https://github.com/WalnutBai/lx-lxwalnut-music-mobile/issues"
   },
-  "homepage": "https://github.com/souvenp/lx-netease-music-mobile#readme",
+  "homepage": "https://github.com/WalnutBai/lx-lxwalnut-music-mobile#readme",
   "dependencies": {
     "@craftzdog/react-native-buffer": "^6.0.5",
     "@d11/react-native-fast-image": "^8.13.0",
@@ -50,10 +51,12 @@
     "@react-native-community/slider": "^4.5.5",
     "@react-native-cookies/cookies": "^6.2.1",
     "axios": "^1.12.2",
+    "crypto-js": "^4.2.0",
     "he": "^1.2.0",
     "iconv-lite": "^0.6.3",
     "lrc-file-parser": "^2.4.1",
     "message2call": "^0.1.3",
+    "node-forge": "^1.4.0",
     "pako": "^2.1.0",
     "react": "18.2.0",
     "react-devtools": "^6.1.5",
@@ -86,13 +89,17 @@
     "@react-native/metro-config": "^0.74.89",
     "@react-native/typescript-config": "^0.74.89",
     "@tsconfig/react-native": "^3.0.5",
+    "@types/crypto-js": "^4.2.2",
     "@types/he": "^1.2.3",
+    "@types/node-forge": "^1.3.14",
     "@types/react": "^18.3.18",
     "@types/react-native": "^0.72.8",
     "@types/react-native-background-timer": "^2.0.2",
     "@types/react-native-vector-icons": "^6.4.18",
     "babel-plugin-module-resolver": "^5.0.2",
     "changelog-parser": "^3.0.1",
+    "opentype": "^0.1.2",
+    "svg2ttf": "^6.1.0",
     "typescript": "^5.7.3"
   }
 }
