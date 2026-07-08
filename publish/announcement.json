@@ -2,7 +2,7 @@
   "announcementId": "2",
   "title": "🎉 更新说明",
   "content": [
-    "## 优化\n\n1. 完全重构音源测试功能，测试准确率提升至90%以上\n2. 音源测试页面新增更详细信息展示",
+    "## 优化\n\n1. 完全重构音源测试功能，测试准确率提升至90%以上\n2. 音源测试页面新增更详细信息展示\n\n![音源测试][200](local://file-20260708222932251.png ",
     "## 功能提醒\n\n1. 现在的侧边栏支持分组显示了\n\n![侧边栏分组](https://gh.llkk.cc/https://raw.githubusercontent.com/WalnutBai/lx-lxwalnut-music-mobile/master/publish/images/file-20260708232314968.png)\n\n    开关在设置界面\n\n![设置开关](https://gh.llkk.cc/https://raw.githubusercontent.com/WalnutBai/lx-lxwalnut-music-mobile/master/publish/images/file-20260708232224175.png)",
     "## 新增\n\n1. 播放界面展示当前实际播放音源平台\n2. 播放界面展示当前实际播放音质\n\n![播放界面](https://gh.llkk.cc/https://raw.githubusercontent.com/WalnutBai/lx-lxwalnut-music-mobile/master/publish/images/file-20260708222550999.png)\n\n    - 对应控制开关放置于播放器设置内，可自由开启/关闭\n3. 播放设置新增音质搜索展示功能\n\n    - 提示：页面显示的最高音质仅代表音源存在该规格，不保证可正常播放",
     "## 常见问题汇总\n\n**问:** 为什么 QQ 猜你喜欢歌单或者部分歌单显示加载失败或者到底了？\n\n**答:** Cookie 到期了，重新登录即可。"
