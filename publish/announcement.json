@@ -1,11 +1,9 @@
 {
-  "announcementId": "260716",
+  "announcementId": "260723",
   "title": "🎉 更新说明",
   "content": [
     "## 通知\n\n现已开通用户反馈交流群\n\n群号：\n\n```\n739539492\n```\n\n如有使用问题、功能建议，均可进群反馈，问题无法保证全部解决。",
-    "## 新增：歌曲缓存 URL 按钮\n\n- 新增**缓存命中机制**开关\n- **自行选择是否启用**\n    - 开启：优先命中已缓存资源，节省流量，降低请求\n    - 关闭：每次都会发起新的请求\n    - 注意：关闭后音频预加载将变得没意义，建议同时关闭。\n\n![缓存 URL](https://gh.llkk.cc/https://raw.githubusercontent.com/WalnutBai/lx-lxwalnut-music-mobile/master/publish/images/page1.png)",
-    "## 新增：批量下载\n\n「我的列表」等相关列表现已支持**批量下载**。\n\n- 勾选多首歌曲一键批量下载\n\n![批量下载](https://raw.githubusercontent.com/WalnutBai/lx-lxwalnut-music-mobile/master/publish/images/page2.png)",
-    "## WebDAV 增强\n\n- WebDAV ：支持**链式播放**\n- 支持**直接下载到 WebDAV**，\n- 侧边栏 WebDAV 配置页可指定上传目录\n\n![WebDAV 1](https://raw.githubusercontent.com/WalnutBai/lx-lxwalnut-music-mobile/master/publish/images/page3.1.png)\n\n![WebDAV 2](https://raw.githubusercontent.com/WalnutBai/lx-lxwalnut-music-mobile/master/publish/images/page3.2.png)"
+    "## 26.07.23\n\n### 新增\n\n- 底部播放器新增「底层播放器背景不透明度」调节，控制底部播放栏背景透明度\n- 基本设置新增「恢复原版底部播放器样式」开关，开启切换为原版播放器布局\n- 新增逐字歌词逐字高亮显示功能\n- 横屏模式新增车机横屏与平板横屏支持\n- 并发下载新增多任务并发下载支持，提升批量下载效率\n- 下载管理新增「清空下载队列」功能，一键清除待下载任务\n- WebDAV新增 Openlist 兼容支持（本地挂载服务器需填写本机IP，回环地址无法播放）\n- 播放交互新增进度条拖动时实时进度预览显示\n\n### 优化\n\n- 优化歌词渲染效果\n- 音源管理从「基本设置」分离为独立板块，优化入口展示\n- WebDAV歌曲支持自动获取封面\n- 优化新UI界面在不同主题下的文字色调提升视觉一致性\n\n### 修复\n\n- 修复侧边栏未开启分数显示状态下排序异常Bug\n- 修复WebDAV手动备份设置残缺问题，完整备份配置与音源\n- 修复侧边栏未开启分组状态下排序异常Bug\n- 修复部分本地歌曲（文件名含特殊字符）无法播放异常\n- 修复关闭横屏后部分操作强制回到横屏问题\n- 修复侧边栏展开宽度计算为0，导致无法展开、全屏阴影卡死问题\n- 修复网易云登录/取消Cookie偶发崩溃问题\n- 修复WY VIP账号无法加载自定义源播放故障\n- 修复临时歌单歌曲无法删除移除的问题\n- 修复回退网易云心动模式匹配逻辑"
   ],
   "image": [
     "",
