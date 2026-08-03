@@ -132,8 +132,18 @@ const LandscapeImmersionIcon = ({ size, color }: { size: number; color: string }
   </Svg>
 )
 
-const FolderIcon = ({ size, color }: { size: number; color: string }) => (
-  <Svg width={size} height={size} viewBox="0 0 1024 1024" fill="none">
+/**
+ * 统计图标 - 柱状图,用于听歌统计
+ */
+const StatsIcon = ({ size, color }: { size: number; color: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="3" y="12" width="4" height="9" rx="1" fill={color} />
+    <Rect x="10" y="7" width="4" height="14" rx="1" fill={color} />
+    <Rect x="17" y="3" width="4" height="18" rx="1" fill={color} />
+  </Svg>
+)
+
+const FolderIcon = ({ size, color }: { size: number; color: string }) => (  <Svg width={size} height={size} viewBox="0 0 1024 1024" fill="none">
     <Path
       d="M800.6144 915.2512H227.8912a164.1984 164.1984 0 0 1-163.84-163.84V272.128a164.1984 164.1984 0 0 1 163.84-163.84H363.52a169.4208 169.4208 0 0 1 101.2224 33.536l76.3904 57.4464a107.52 107.52 0 0 0 64.2048 21.4528h195.2768a164.1984 164.1984 0 0 1 163.84 163.84v366.4384a164.1984 164.1984 0 0 1-163.84 164.2496zM227.8912 169.5232a102.7072 102.7072 0 0 0-102.4 102.4v479.0784a102.7072 102.7072 0 0 0 102.4 102.4h572.7232a102.7072 102.7072 0 0 0 102.4-102.4V384.768a102.7072 102.7072 0 0 0-102.4-102.4h-195.2768a169.3184 169.3184 0 0 1-101.12-33.792L427.8272 190.9248A107.52 107.52 0 0 0 363.52 169.5232z"
       fill={color}
@@ -168,6 +178,8 @@ export const SvgIcon = memo(({ name, size = 15, rawSize, color = '#000', style }
         return <MusicListIcon size={finalSize} color={color} />
       case 'landscape-immersion':
         return <LandscapeImmersionIcon size={finalSize} color={color} />
+      case 'stats':
+        return <StatsIcon size={finalSize} color={color} />
       default:
         return null
     }

@@ -88,6 +88,10 @@ export const storageDataPrefix = {
   downloadList: '@download_list',
   wyUidCache: '@wy_uid_cache__',
   similarSongsCache: '@similar_songs_cache',
+
+  statsDaily: '@stats_daily',
+  statsSong: '@stats_song',
+  statsEvents: '@stats_events',
 } as const
 
 // v0.x.x 版本的 data keys
@@ -114,6 +118,7 @@ export const NAV_MENUS = [
   { id: 'nav_top', icon: 'leaderboard' },
   { id: 'nav_love', icon: 'love' },
   { id: 'nav_daily_rec', icon: 'svg:calendar' },
+  { id: 'nav_stats', icon: 'svg:stats' },
   { id: 'nav_followed_artists', icon: 'svg:artist' },
   { id: 'nav_subscribed_albums', icon: 'svg:album-disc' },
   { id: 'nav_my_playlist', icon: 'album' },

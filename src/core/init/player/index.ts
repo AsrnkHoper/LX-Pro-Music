@@ -5,6 +5,7 @@ import initPlayerEvent from './playerEvent'
 import initWatchList from './watchList'
 import initPlayProgress from './playProgress'
 import initPlayHistory from './playHistory'
+import initStats from './stats'
 import initPreloadNextMusic from './preloadNextMusic'
 import initLyric from './lyric'
 
@@ -17,5 +18,6 @@ export default async (setting: LX.AppSetting) => {
   initWatchList()
   initPlayProgress()
   initPlayHistory()
+  initStats()
   initPreloadNextMusic()
 }
