@@ -1,0 +1,31 @@
+name: Debug Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  Android-Debug:
+    name: Android Debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out git repository
+        uses: actions/checkout@v4
+
+      - name: Setup Env
+        uses: ./.github/actions/setup
+
+      - name: Build Debug APK
+        shell: bash
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --console=plain
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
