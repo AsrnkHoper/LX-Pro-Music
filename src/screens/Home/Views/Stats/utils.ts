@@ -17,17 +17,19 @@ const hslToHsla = (h: number, s: number, l: number, a: number): string =>
 
 /**
  * 按实际秒数生成热力图颜色(连续渐变,无档位)
+ *  - 使用平方根映射,让低段(日常 1-3 小时)也有丰富的颜色区分度
  *  - duration <= 0 → 透明(无数据)
  *  - duration >= MAX_HEAT_SECONDS → 最深红(满色阶)
- *  - 中间线性插值:色相 120°(绿) → 0°(红),亮度 0.62 → 0.32,透明度 0.35 → 1
+ *  - 色相 120°(绿) → 0°(红),亮度递减,透明度递减
  */
 export const getHeatColor = (duration: number): string => {
   if (duration <= 0) return 'transparent'
-  const ratio = Math.min(1, duration / MAX_HEAT_SECONDS)
+  const linear = Math.min(1, duration / MAX_HEAT_SECONDS)
+  const ratio = Math.sqrt(linear)  // 平方根:低段拉伸,高段压缩
   const hue = 120 - ratio * 120            // 120° 绿 → 60° 黄 → 30° 橙 → 0° 红
-  const saturation = 0.65 + ratio * 0.2    // 越久越饱和
-  const lightness = 0.62 - ratio * 0.3     // 越久越暗(0.62 → 0.32)
-  const alpha = 0.35 + ratio * 0.65        // 越久越不透明(0.35 → 1)
+  const saturation = 0.6 + ratio * 0.35    // 越久越饱和
+  const lightness = 0.6 - ratio * 0.28     // 越久越暗(0.6 → 0.32)
+  const alpha = 0.3 + ratio * 0.7          // 越久越不透明(0.3 → 1)
   return hslToHsla(hue, saturation, lightness, alpha)
 }
 

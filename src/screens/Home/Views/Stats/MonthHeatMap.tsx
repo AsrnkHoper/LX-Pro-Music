@@ -179,20 +179,22 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
       </View>
 
       {/* 色阶图例 */}
-      <View style={styles.legendRow}>
-        <Text size={12} color={theme['c-500']}>少</Text>
-        {Array.from({ length: 20 }, (_, i) => {
-          const seconds = ((i + 0.5) / 20) * MAX_HEAT_SECONDS
-          return (
-            <View
-              key={i}
-              style={{ ...styles.legendCell, backgroundColor: getHeatColor(seconds) }}
-            />
-          )
-        })}
-        <Text size={12} color={theme['c-500']}>多</Text>
-        <Text size={12} color={theme['c-300']} style={styles.legendHint}>(满色阶=24小时)</Text>
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.legendScroll}>
+        <View style={styles.legendRow}>
+          <Text size={12} color={theme['c-500']}>少</Text>
+          {Array.from({ length: 12 }, (_, i) => {
+            const seconds = ((i + 0.5) / 12) * MAX_HEAT_SECONDS
+            return (
+              <View
+                key={i}
+                style={{ ...styles.legendCell, backgroundColor: getHeatColor(seconds) }}
+              />
+            )
+          })}
+          <Text size={12} color={theme['c-500']}>多</Text>
+          <Text size={12} color={theme['c-300']} style={styles.legendHint}>(满色阶=24小时)</Text>
+        </View>
+      </ScrollView>
 
       {/* 当天账本 */}
       {selectedDate ? (
@@ -270,6 +272,10 @@ const styles = createStyle({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
+    paddingRight: 10,
+  },
+  legendScroll: {
+    flexGrow: 0,
   },
   legendCell: {
     width: 14,
