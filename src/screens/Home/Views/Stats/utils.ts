@@ -1,40 +1,38 @@
 /**
- * 听歌统计页工具:色阶算法 / 日期工具 / 时长格式化
- * 色阶规格(策划文档 7.1):0=无数据,固定 12h 为满色阶,按 1/5 分段(2.4h/4.8h/7.2h/9.6h/12h+)
- * 颜色:基于主题主色 HSL 调亮度 + 透明度层级,深/浅主题都适配
+ * 听歌统计页工具:连续色阶 / 日期工具 / 时长格式化
+ *
+ * 色阶方案(琥珀定制):绿 → 黄 → 橙 → 红 连续渐变,无档位台阶。
+ *  - 色相从 120°(绿)平滑滑到 0°(红),随听歌时长线性映射
+ *  - 同时亮度递减、不透明度递增:时长越久,颜色越深越实
+ *  - 满色阶 = 24 小时(听满一天达到最深红)
+ *  - 时长 0 = 无数据,显示透明(与"听过一点"的极淡绿区分)
  */
 
-/** 满色阶时长(秒) = 12 小时 */
-export const MAX_HEAT_SECONDS = 12 * 60 * 60
-/** 色阶分段数(5 级) */
-export const HEAT_LEVELS = 5
+/** 满色阶时长(秒) = 24 小时 */
+export const MAX_HEAT_SECONDS = 24 * 60 * 60
 
-/** 按实际秒数计算色阶等级(0 = 无数据,1~5) */
-export const getHeatLevel = (duration: number): number => {
-  if (duration <= 0) return 0
-  const ratio = duration / MAX_HEAT_SECONDS
-  if (ratio >= 1) return HEAT_LEVELS
-  return Math.min(HEAT_LEVELS, Math.max(1, Math.ceil(ratio * HEAT_LEVELS)))
+/** HSL → rgba 字符串(react-native 支持 hsla,直接返回 hsla 更简单) */
+const hslToHsla = (h: number, s: number, l: number, a: number): string =>
+  `hsla(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%, ${a})`
+
+/**
+ * 按实际秒数生成热力图颜色(连续渐变,无档位)
+ *  - duration <= 0 → 透明(无数据)
+ *  - duration >= MAX_HEAT_SECONDS → 最深红(满色阶)
+ *  - 中间线性插值:色相 120°(绿) → 0°(红),亮度 0.62 → 0.32,透明度 0.35 → 1
+ */
+export const getHeatColor = (duration: number): string => {
+  if (duration <= 0) return 'transparent'
+  const ratio = Math.min(1, duration / MAX_HEAT_SECONDS)
+  const hue = 120 - ratio * 120            // 120° 绿 → 60° 黄 → 30° 橙 → 0° 红
+  const saturation = 0.65 + ratio * 0.2    // 越久越饱和
+  const lightness = 0.62 - ratio * 0.3     // 越久越暗(0.62 → 0.32)
+  const alpha = 0.35 + ratio * 0.65        // 越久越不透明(0.35 → 1)
+  return hslToHsla(hue, saturation, lightness, alpha)
 }
 
-/** 每级色阶的透明度(由浅到深),level 0 为透明 */
-const LEVEL_ALPHAS = [0, 0.14, 0.3, 0.5, 0.7, 0.9]
-
-const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
-  const normalized = hex.replace('#', '')
-  const full = normalized.length === 3 ? normalized.split('').map(c => c + c).join('') : normalized
-  const num = parseInt(full, 16)
-  if (Number.isNaN(num)) return { r: 0, g: 0, b: 0 }
-  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 }
-}
-
-/** 根据主题主色生成某色阶等级的颜色字符串(带透明度) */
-export const getHeatColor = (level: number, primaryColor: string): string => {
-  if (level <= 0) return 'transparent'
-  const { r, g, b } = hexToRgb(primaryColor)
-  const alpha = LEVEL_ALPHAS[Math.min(HEAT_LEVELS, level)]
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
+/** 判断该时长是否有数据(用于决定格子文字颜色) */
+export const hasHeatData = (duration: number): boolean => duration > 0
 
 /** 秒数 → "X小时X分"(不足 1 分钟显示 "X分",不足 1 小时显示 "X分",0 显示 "0分") */
 export const formatDuration = (seconds: number): string => {

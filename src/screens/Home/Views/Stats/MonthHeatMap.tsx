@@ -9,9 +9,10 @@ import {
   formatDuration,
   formatDurationFull,
   getHeatColor,
-  getHeatLevel,
+  hasHeatData,
   getMonthDays,
   getTodayText,
+  MAX_HEAT_SECONDS,
   parseDateText,
   toDateText,
   toMonthText,
@@ -139,7 +140,6 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
       <View style={styles.grid}>
         {monthDays.map(({ date, dateText, isCurrentMonth }: MonthDay) => {
           const duration = heatMap.get(dateText) ?? 0
-          const level = getHeatLevel(duration)
           const isToday = dateText === todayText
           const isSelected = dateText === selectedDate
           const isFuture = dateText > todayText
@@ -148,7 +148,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
               key={dateText}
               style={{
                 ...styles.dayCell,
-                backgroundColor: getHeatColor(level, theme['c-primary']),
+                backgroundColor: getHeatColor(duration),
                 borderColor: isSelected ? theme['c-primary'] : 'transparent',
                 borderWidth: isSelected ? 1 : 0,
                 opacity: isCurrentMonth ? 1 : 0.35,
@@ -165,7 +165,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
                     ? theme['c-300']
                     : isSelected
                       ? theme['c-primary']
-                      : level > 0
+                      : hasHeatData(duration)
                         ? theme['c-font']
                         : theme['c-500']
                 }
@@ -181,14 +181,17 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
       {/* 色阶图例 */}
       <View style={styles.legendRow}>
         <Text size={12} color={theme['c-500']}>少</Text>
-        {[0, 1, 2, 3, 4, 5].map(level => (
-          <View
-            key={level}
-            style={{ ...styles.legendCell, backgroundColor: getHeatColor(level, theme['c-primary']) }}
-          />
-        ))}
+        {Array.from({ length: 20 }, (_, i) => {
+          const seconds = ((i + 0.5) / 20) * MAX_HEAT_SECONDS
+          return (
+            <View
+              key={i}
+              style={{ ...styles.legendCell, backgroundColor: getHeatColor(seconds) }}
+            />
+          )
+        })}
         <Text size={12} color={theme['c-500']}>多</Text>
-        <Text size={12} color={theme['c-300']} style={styles.legendHint}>(满色阶=12小时)</Text>
+        <Text size={12} color={theme['c-300']} style={styles.legendHint}>(满色阶=24小时)</Text>
       </View>
 
       {/* 当天账本 */}
@@ -197,7 +200,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
           <Text size={14} color={theme['c-font']} style={styles.dayListTitle}>
             {selectedDate} 账本({dayEvents.length} 次)
           </Text>
-          <ScrollView style={styles.dayListScroll}>
+          <ScrollView style={styles.dayListScroll} nestedScrollEnabled>
             {dayEvents.length === 0 ? (
               <Text size={13} color={theme['c-500']} style={styles.emptyTip}>当天暂无播放记录</Text>
             ) : (
@@ -220,7 +223,6 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
 
 const styles = createStyle({
   container: {
-    flex: 1,
     paddingHorizontal: 10,
   },
   header: {
@@ -279,7 +281,6 @@ const styles = createStyle({
     marginLeft: 6,
   },
   dayList: {
-    flex: 1,
     marginTop: 4,
     paddingHorizontal: 4,
   },
@@ -287,8 +288,7 @@ const styles = createStyle({
     paddingVertical: 6,
   },
   dayListScroll: {
-    flexGrow: 0,
-    maxHeight: 220,
+    height: 220,
   },
   emptyTip: {
     paddingVertical: 10,
