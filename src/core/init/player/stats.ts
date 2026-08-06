@@ -1,13 +1,18 @@
+import BackgroundTimer from 'react-native-background-timer'
 import playerState from '@/store/player/state'
 import { addStatsRecordQueued, backfillStatsFromHistory } from '@/core/player/stats'
 import { isOneDriveMusicInfo } from '@/core/oneDrive/utils'
+import { getPosition } from '@/plugins/player'
 
 /**
  * 本地听歌统计 —— 埋点/结算层
  *
  * 照抄 playHistory.ts(有效收听判定)+ scrobble.ts(实际播放秒数 delta 累加)模式:
  *  - musicToggled:切歌 → 结算上一曲,记录新曲上下文
- *  - playProgressChanged:每秒轮询 → 连续播放时累加实际秒数(delta 方式,暂停/拖动不计)
+ *  - 自建 BackgroundTimer 轮询:每 2s 查询原生播放位置 getPosition(),
+ *    连续播放时累加实际秒数。不用 playProgressChanged 事件——
+ *    因为 playProgress.ts 在锁屏(isScreenOn=false)时会停止进度轮询,
+ *    依赖它会导致锁屏听歌时长完全不计。
  *  - pause:暂停 → 结算当前累计
  *  - playerEnded:播放结束 → 结算当前累计
  *
@@ -18,6 +23,10 @@ import { isOneDriveMusicInfo } from '@/core/oneDrive/utils'
 
 const MIN_PLAY_TIME = 2 * 60
 const MIN_PLAY_RATIO = 0.5
+/** 轮询间隔(秒) */
+const POLL_INTERVAL_MS = 2000
+/** 连续播放判定阈值:相邻轮询位置差小于此值视为连续播放(拖动进度条跳变不计入) */
+const MAX_CONTINUOUS_DELTA = 30
 
 interface Session {
   musicInfo: LX.Music.MusicInfo
@@ -29,6 +38,7 @@ interface Session {
 }
 
 let currentSession: Session | null = null
+let pollTimer: number | null = null
 
 /** 结算当前会话:把累计的实际播放秒数写入统计层 */
 const settleSession = () => {
@@ -46,6 +56,17 @@ const settleSession = () => {
   })
 }
 
+const createSession = (musicInfo: LX.Music.MusicInfo) => {
+  currentSession = {
+    musicInfo,
+    playedAt: Date.now(),
+    accumulatedTime: 0,
+    lastProgressTime: 0,
+    maxTime: playerState.progress.maxPlayTime ?? 0,
+    isEffective: false,
+  }
+}
+
 const handleMusicToggled = () => {
   // 切歌:先结算上一曲
   settleSession()
@@ -57,37 +78,46 @@ const handleMusicToggled = () => {
   const musicInfo = 'progress' in musicInfoRaw ? musicInfoRaw.metadata.musicInfo : musicInfoRaw
   if (isOneDriveMusicInfo(musicInfo)) return
 
-  currentSession = {
-    musicInfo,
-    playedAt: Date.now(),
-    accumulatedTime: 0,
-    lastProgressTime: 0,
-    maxTime: 0,
-    isEffective: false,
-  }
+  createSession(musicInfo)
 }
 
-const handlePlayProgressChanged: typeof global.state_event.playProgressChanged = (progress) => {
+/**
+ * 后台轮询:每 2s 查询原生播放位置,连续播放时累加实际秒数
+ * 独立于 playProgress 的进度轮询,锁屏/后台依然有效
+ */
+const pollPlayPosition = () => {
   const session = currentSession
   if (!session || !playerState.isPlay) return
 
-  const nowPlayTime = progress.nowPlayTime
-  // 只在连续播放时累加(允许 1 秒误差,应对计时器延迟;拖动进度条导致跳变不计入)
-  if (nowPlayTime > session.lastProgressTime && nowPlayTime - session.lastProgressTime <= 1) {
-    session.accumulatedTime += nowPlayTime - session.lastProgressTime
-  }
-  session.lastProgressTime = nowPlayTime
-  if (progress.maxPlayTime) session.maxTime = progress.maxPlayTime
+  void getPosition().then((position) => {
+    const s = currentSession
+    if (!s || s !== session || !position) return
 
-  // 有效收听判定:累计 ≥120s 或 ≥50%(与 scrobble 口径一致)
-  if (!session.isEffective) {
-    if (
-      session.accumulatedTime >= MIN_PLAY_TIME ||
-      (session.maxTime > 0 && session.accumulatedTime / session.maxTime >= MIN_PLAY_RATIO)
-    ) {
-      session.isEffective = true
+    const nowPlayTime = position
+    // 位置回退(切歌后归零/进度条后退):重置基线,不累加
+    if (nowPlayTime < s.lastProgressTime) {
+      s.lastProgressTime = nowPlayTime
+      return
     }
-  }
+
+    const delta = nowPlayTime - s.lastProgressTime
+    // 只在连续播放时累加(轮询间隔 2s,允许 30s 误差应对后台节流;拖动进度条跳变不计入)
+    if (delta > 0 && delta < MAX_CONTINUOUS_DELTA) {
+      s.accumulatedTime += delta
+
+      // 有效收听判定:累计 ≥120s 或 ≥50%(与 scrobble 口径一致)
+      if (!s.isEffective) {
+        if (
+          s.accumulatedTime >= MIN_PLAY_TIME ||
+          (s.maxTime > 0 && s.accumulatedTime / s.maxTime >= MIN_PLAY_RATIO)
+        ) {
+          s.isEffective = true
+        }
+      }
+    }
+
+    s.lastProgressTime = nowPlayTime
+  })
 }
 
 const handlePause = () => {
@@ -108,14 +138,7 @@ const handlePlay = () => {
   const musicInfo = 'progress' in musicInfoRaw ? musicInfoRaw.metadata.musicInfo : musicInfoRaw
   if (isOneDriveMusicInfo(musicInfo)) return
 
-  currentSession = {
-    musicInfo,
-    playedAt: Date.now(),
-    accumulatedTime: 0,
-    lastProgressTime: 0,
-    maxTime: 0,
-    isEffective: false,
-  }
+  createSession(musicInfo)
 }
 
 export default () => {
@@ -126,5 +149,8 @@ export default () => {
   global.app_event.on('pause', handlePause)
   global.app_event.on('playerEnded', handlePlayerEnded)
   global.app_event.on('play', handlePlay)
-  global.state_event.on('playProgressChanged', handlePlayProgressChanged)
+
+  // 自建后台轮询,锁屏也持续累计时长
+  if (pollTimer != null) BackgroundTimer.clearInterval(pollTimer)
+  pollTimer = BackgroundTimer.setInterval(pollPlayPosition, POLL_INTERVAL_MS)
 }
