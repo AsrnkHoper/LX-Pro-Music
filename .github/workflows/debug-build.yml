@@ -21,7 +21,12 @@ jobs:
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleDebug --console=plain
+          # 禁用 gradle 构建缓存(--no-build-cache)+ 清掉旧 JS bundle,
+          # 强制 Metro 用最新源码重新打包(避免 CI 缓存导致 bundle 陈旧)
+          rm -rf app/build/generated/assets \
+                 app/build/generated/react \
+                 ../node_modules/.cache
+          ./gradlew assembleDebug --no-build-cache --console=plain
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
