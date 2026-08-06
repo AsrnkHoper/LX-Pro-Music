@@ -3,7 +3,7 @@ import { ScrollView, TouchableOpacity, View, FlatList } from 'react-native'
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
-import { createStyle, toast } from '@/utils/tools'
+import { createStyle, toast, confirmDialog } from '@/utils/tools'
 import {
   changeMonth,
   formatDuration,
@@ -96,18 +96,27 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
 
   const handleLongPressDay = useCallback((dateText: string) => {
     if (dateText > todayText) return
-    toast('删除确认：长按删除当天数据')
-    // 简化处理:直接删除(策划文档:长按格子可删除当天数据)
-    void deleteStatsDay(dateText).then(() => {
-      setHeatMap(prev => {
-        const next = new Map(prev)
-        next.delete(dateText)
-        return next
+    const dayDuration = heatMap.get(dateText) ?? 0
+    // 确认删除弹窗,防止误删
+    void confirmDialog({
+      title: '删除当天统计',
+      message: `确定删除 ${dateText} 的听歌统计吗?(时长 ${formatDuration(dayDuration)},不可恢复)`,
+      cancelButtonText: '取消',
+      confirmButtonText: '删除',
+      bgClose: false,
+    }).then((confirm) => {
+      if (!confirm) return
+      void deleteStatsDay(dateText).then(() => {
+        setHeatMap(prev => {
+          const next = new Map(prev)
+          next.delete(dateText)
+          return next
+        })
+        setDayEvents([])
+        toast('已删除当天统计')
       })
-      setDayEvents([])
-      toast('已删除当天统计')
     })
-  }, [])
+  }, [heatMap, todayText])
 
   return (
     <View style={styles.container}>

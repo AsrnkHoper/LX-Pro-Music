@@ -1,4 +1,5 @@
 import BackgroundTimer from 'react-native-background-timer'
+import { AppState } from 'react-native'
 import playerState from '@/store/player/state'
 import { addStatsRecordQueued, backfillStatsFromHistory } from '@/core/player/stats'
 import { isOneDriveMusicInfo } from '@/core/oneDrive/utils'
@@ -26,7 +27,7 @@ const MIN_PLAY_RATIO = 0.5
 /** 轮询间隔(秒) */
 const POLL_INTERVAL_MS = 2000
 /** 连续播放判定阈值:相邻轮询位置差小于此值视为连续播放(拖动进度条跳变不计入) */
-const MAX_CONTINUOUS_DELTA = 30
+const MAX_CONTINUOUS_DELTA = 60 * 60  // 放宽到 1 小时:锁屏期间轮询可能长时间不触发,解锁后一次性补上大差值
 
 interface Session {
   musicInfo: LX.Music.MusicInfo
@@ -153,4 +154,12 @@ export default () => {
   // 自建后台轮询,锁屏也持续累计时长
   if (pollTimer != null) BackgroundTimer.clearInterval(pollTimer)
   pollTimer = BackgroundTimer.setInterval(pollPlayPosition, POLL_INTERVAL_MS)
+
+  // AppState 恢复前台时立即结算一次:
+  // 锁屏期间轮询可能被系统挂起,解锁瞬间用 getPosition() 把锁屏播放的时长差值补上
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      pollPlayPosition()
+    }
+  })
 }
