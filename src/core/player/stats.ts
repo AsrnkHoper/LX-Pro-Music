@@ -21,8 +21,8 @@ const statsEventsKey = storageDataPrefix.statsEvents
 
 /** 原始事件保留天数 */
 const MAX_EVENT_DAYS = 90
-/** 最短入账时长(秒):播放不足此值不入账本,过滤快速切歌 */
-const MIN_RECORD_TIME = 30
+/** 最短入账时长(秒):播放不足此值不入账本,过滤试听/快速切歌 */
+const MIN_RECORD_TIME = 60
 const DAY = 24 * 60 * 60 * 1000
 
 export const getStatsDaily = async () => {
