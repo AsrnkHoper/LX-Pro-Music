@@ -1,9 +1,10 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScrollView, TouchableOpacity, View, FlatList } from 'react-native'
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
+import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
 import { useTheme } from '@/store/theme/hook'
-import { createStyle, toast, confirmDialog } from '@/utils/tools'
+import { createStyle, toast } from '@/utils/tools'
 import {
   changeMonth,
   formatDuration,
@@ -41,6 +42,8 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
   const [viewMonth, setViewMonth] = useState<Date>(() => parseDateText(selectedDate) ?? new Date())
   const [heatMap, setHeatMap] = useState<Map<string, number>>(new Map())
   const [dayEvents, setDayEvents] = useState<LX.Stats.EventItem[]>([])
+  const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null)
+  const deleteConfirmRef = useRef<ConfirmAlertType>(null)
 
   const monthText = toMonthText(viewMonth)
 
@@ -96,27 +99,24 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
 
   const handleLongPressDay = useCallback((dateText: string) => {
     if (dateText > todayText) return
-    const dayDuration = heatMap.get(dateText) ?? 0
-    // 确认删除弹窗,防止误删
-    void confirmDialog({
-      title: '删除当天统计',
-      message: `确定删除 ${dateText} 的听歌统计吗?(时长 ${formatDuration(dayDuration)},不可恢复)`,
-      cancelButtonText: '取消',
-      confirmButtonText: '删除',
-      bgClose: false,
-    }).then((confirm) => {
-      if (!confirm) return
-      void deleteStatsDay(dateText).then(() => {
-        setHeatMap(prev => {
-          const next = new Map(prev)
-          next.delete(dateText)
-          return next
-        })
-        setDayEvents([])
-        toast('已删除当天统计')
+    setPendingDeleteDate(dateText)
+    deleteConfirmRef.current?.setVisible(true)
+  }, [todayText])
+
+  const handleConfirmDelete = useCallback(() => {
+    const dateText = pendingDeleteDate
+    if (!dateText) return
+    void deleteStatsDay(dateText).then(() => {
+      setHeatMap(prev => {
+        const next = new Map(prev)
+        next.delete(dateText)
+        return next
       })
+      setDayEvents([])
+      toast('已删除当天统计')
     })
-  }, [heatMap, todayText])
+    setPendingDeleteDate(null)
+  }, [pendingDeleteDate])
 
   return (
     <View style={styles.container}>
@@ -228,6 +228,18 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
           </ScrollView>
         </View>
       ) : null}
+
+      {/* 删除确认弹窗(项目自带 UI 风格) */}
+      <ConfirmAlert
+        ref={deleteConfirmRef}
+        title="删除当天统计"
+        text={pendingDeleteDate ? `确定删除 ${pendingDeleteDate} 的听歌统计吗?不可恢复` : ''}
+        cancelText="取消"
+        confirmText="删除"
+        bgHide={false}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDeleteDate(null)}
+      />
     </View>
   )
 })

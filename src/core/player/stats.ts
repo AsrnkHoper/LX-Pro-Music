@@ -21,6 +21,8 @@ const statsEventsKey = storageDataPrefix.statsEvents
 
 /** 原始事件保留天数 */
 const MAX_EVENT_DAYS = 90
+/** 最短入账时长(秒):播放不足此值不入账本,过滤快速切歌 */
+const MIN_RECORD_TIME = 30
 const DAY = 24 * 60 * 60 * 1000
 
 export const getStatsDaily = async () => {
@@ -61,6 +63,10 @@ export const addStatsRecord = async (params: {
   isEffective: boolean
 }) => {
   const { musicInfo, playedAt, playTime, maxTime, isEffective } = params
+
+  // 太短的播放(如用户切歌前的几秒~几十秒)不入账本,避免污染统计
+  if (playTime < MIN_RECORD_TIME) return
+
   const date = getHistoryDay(playedAt)
 
   const [dailyList, songList, eventList] = await getDataMultiple([statsDailyKey, statsSongKey, statsEventsKey])
