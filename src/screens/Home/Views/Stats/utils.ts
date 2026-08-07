@@ -16,16 +16,17 @@ const hslToHsla = (h: number, s: number, l: number, a: number): string =>
   `hsla(${Math.round(h)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%, ${a})`
 
 /**
- * 按实际秒数生成热力图颜色(连续渐变,无档位)
- *  - 使用平方根映射,让低段(日常 1-3 小时)也有丰富的颜色区分度
+ * 按实际秒数生成热力图颜色(连续渐变,无档位,动态色阶)
+ *  - maxDuration = 当月听歌时长最大值(满色基准),传入当月最高的那天的时长
+ *  - duration 相对 maxDuration 线性映射,当月最多的一天 = 最深红
+ *  - 这样无论用户日均听 30 分钟还是 3 小时,热力图都有完整层次
  *  - duration <= 0 → 透明(无数据)
- *  - duration >= MAX_HEAT_SECONDS → 最深红(满色阶)
  *  - 色相 120°(绿) → 0°(红),亮度递减,透明度递减
  */
-export const getHeatColor = (duration: number): string => {
+export const getHeatColor = (duration: number, maxDuration: number): string => {
   if (duration <= 0) return 'transparent'
-  const linear = Math.min(1, duration / MAX_HEAT_SECONDS)
-  const ratio = Math.sqrt(linear)  // 平方根:低段拉伸,高段压缩
+  if (maxDuration <= 0) return 'transparent'
+  const ratio = Math.min(1, duration / maxDuration)
   const hue = 120 - ratio * 120            // 120° 绿 → 60° 黄 → 30° 橙 → 0° 红
   const saturation = 0.6 + ratio * 0.35    // 越久越饱和
   const lightness = 0.6 - ratio * 0.28     // 越久越暗(0.6 → 0.32)

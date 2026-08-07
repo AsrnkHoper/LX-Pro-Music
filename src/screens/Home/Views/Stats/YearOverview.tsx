@@ -4,7 +4,7 @@ import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import { getStatsDailyByRange } from '@/core/player/stats'
-import { formatDuration, MAX_HEAT_SECONDS } from './utils'
+import { formatDuration } from './utils'
 
 /**
  * 年度总览(MVP 版:12 个月时长条形总览)
@@ -36,7 +36,8 @@ const YearOverview = memo(() => {
     if (isVisible) loadYear()
   }, [isVisible, loadYear])
 
-  const maxDuration = useMemo(() => Math.max(MAX_HEAT_SECONDS, ...monthDurations), [monthDurations])
+  // 满色基准 = 全年听歌最多的那个月(动态,避免固定24h导致全年都是浅色)
+  const maxDuration = useMemo(() => Math.max(1, ...monthDurations), [monthDurations])
 
   const toggle = useCallback(() => {
     setIsVisible(prev => !prev)
@@ -85,7 +86,7 @@ const YearOverview = memo(() => {
         })}
       </View>
       <Text size={12} color={theme['c-500']} style={styles.hint}>
-        每格深浅 = 当月听歌时长(满色阶 = 12 小时)
+        每格深浅 = 当月听歌时长(全年最多一个月=最深)
       </Text>
     </View>
   )

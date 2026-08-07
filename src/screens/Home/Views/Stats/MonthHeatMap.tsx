@@ -13,7 +13,6 @@ import {
   hasHeatData,
   getMonthDays,
   getTodayText,
-  MAX_HEAT_SECONDS,
   parseDateText,
   toDateText,
   toMonthText,
@@ -41,6 +40,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
   const todayText = getTodayText()
   const [viewMonth, setViewMonth] = useState<Date>(() => parseDateText(selectedDate) ?? new Date())
   const [heatMap, setHeatMap] = useState<Map<string, number>>(new Map())
+  const [maxMonthDuration, setMaxMonthDuration] = useState(0)
   const [dayEvents, setDayEvents] = useState<LX.Stats.EventItem[]>([])
   const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null)
   const deleteConfirmRef = useRef<ConfirmAlertType>(null)
@@ -55,8 +55,13 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
     void getStatsDailyByRange(start, end).then((daily) => {
       if (cancelled) return
       const map = new Map<string, number>()
-      for (const item of daily) map.set(item.date, item.duration)
+      let max = 0
+      for (const item of daily) {
+        map.set(item.date, item.duration)
+        if (item.duration > max) max = item.duration
+      }
       setHeatMap(map)
+      setMaxMonthDuration(max)
     })
     return () => {
       cancelled = true
@@ -157,7 +162,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
               key={dateText}
               style={{
                 ...styles.dayCell,
-                backgroundColor: getHeatColor(duration),
+                backgroundColor: getHeatColor(duration, maxMonthDuration),
                 borderColor: isSelected ? theme['c-primary'] : 'transparent',
                 borderWidth: isSelected ? 1 : 0,
                 opacity: isCurrentMonth ? 1 : 0.35,
@@ -187,21 +192,21 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
         })}
       </View>
 
-      {/* 色阶图例 */}
+      {/* 色阶图例(动态:以当月最多的一天为满色) */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.legendScroll}>
         <View style={styles.legendRow}>
           <Text size={12} color={theme['c-500']}>少</Text>
           {Array.from({ length: 12 }, (_, i) => {
-            const seconds = ((i + 0.5) / 12) * MAX_HEAT_SECONDS
+            const seconds = ((i + 0.5) / 12) * Math.max(maxMonthDuration, 1)
             return (
               <View
                 key={i}
-                style={{ ...styles.legendCell, backgroundColor: getHeatColor(seconds) }}
+                style={{ ...styles.legendCell, backgroundColor: getHeatColor(seconds, maxMonthDuration) }}
               />
             )
           })}
           <Text size={12} color={theme['c-500']}>多</Text>
-          <Text size={12} color={theme['c-300']} style={styles.legendHint}>(满色阶=24小时)</Text>
+          <Text size={12} color={theme['c-300']} style={styles.legendHint}>(当月最多一天=深红)</Text>
         </View>
       </ScrollView>
 
