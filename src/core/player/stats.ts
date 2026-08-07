@@ -21,8 +21,10 @@ const statsEventsKey = storageDataPrefix.statsEvents
 
 /** 原始事件保留天数 */
 const MAX_EVENT_DAYS = 90
-/** 最短入账时长(秒):播放不足此值不入账本,过滤试听/快速切歌 */
-const MIN_RECORD_TIME = 60
+/** 最短入账时长(秒):播放不足此值不入账本,过滤极短试听 */
+const MIN_RECORD_TIME = 30
+/** 最短入账比例:播放不足歌曲时长此比例不入账本(短歌听一半也入账,长歌试听不入) */
+const MIN_RECORD_RATIO = 0.5
 const DAY = 24 * 60 * 60 * 1000
 
 export const getStatsDaily = async () => {
@@ -64,8 +66,11 @@ export const addStatsRecord = async (params: {
 }) => {
   const { musicInfo, playedAt, playTime, maxTime, isEffective } = params
 
-  // 太短的播放(如用户切歌前的几秒~几十秒)不入账本,避免污染统计
-  if (playTime < MIN_RECORD_TIME) return
+  // 入账门槛:播放 ≥50% 且 ≥30 秒(短歌听完也入账,长歌试听不入账)
+  // - 59 秒的歌听完(100%)→ 入账;听 30 秒(51%)→ 入账
+  // - 5 分钟的歌听 30 秒(10%)→ 不入账;试听 <30 秒一律不入
+  const playRatio = maxTime > 0 ? playTime / maxTime : 0
+  if (playTime < MIN_RECORD_TIME || playRatio < MIN_RECORD_RATIO) return
 
   const date = getHistoryDay(playedAt)
 
