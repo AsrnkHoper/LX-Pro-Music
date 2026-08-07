@@ -6,6 +6,11 @@ declare global {
     type AddMusicLocationType = 'top' | 'bottom'
     type DownloadFileNameFormat = '歌名 - 歌手' | '歌手 - 歌名' | '歌名'
 
+    /**
+     * AI 语气偏好五档(第二版,设置页单选)
+     */
+    type AiTone = 'friend' | 'sharp' | 'gentle' | 'minimal' | 'formal'
+
     interface AppSetting {
       version: string
       'version.autoCheckUpdate': boolean;
@@ -75,6 +80,16 @@ declare global {
       'common.wy_cookie': string
       'common.wy_serpapi_key': string
       'common.yt_cookie': string
+
+      /**
+       * AI 配置(第二版,BYOK):Endpoint / API Key / 称呼 / 语气 / 模型
+       * Key 明文存 AsyncStorage(项目既有模式),备份导出时剔除
+       */
+      'common.aiEndpoint': string
+      'common.aiApiKey': string
+      'common.aiNickname': string
+      'common.aiTone': LX.AiTone
+      'common.aiModel': string
 
       /**
        * 总是保留状态栏高度

@@ -7,6 +7,7 @@ import DislikeList from './DislikeList'
 import Log from './Log'
 import IsShowStartupGreeting from './IsShowStartupGreeting'
 import HideNavigationBar from '../Basic/HideNavigationBar'
+import AiConfig from './AiConfig'
 // import MaxCache from './MaxCache'
 import { useI18n } from '@/lang'
 
@@ -17,6 +18,7 @@ export default memo(() => {
     <Section title={t('setting_other')}>
       <HideNavigationBar />
       <IsShowStartupGreeting />
+      <AiConfig />
       <ResourceCache />
       <MetaCache />
       <DislikeList />
