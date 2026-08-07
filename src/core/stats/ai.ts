@@ -129,17 +129,31 @@ export const testAiConnection = async (
           { role: 'system', content: '你是一个连接测试助手,请只回复两个字:成功' },
           { role: 'user', content: 'ping' },
         ],
-        max_tokens: 8,
+        max_tokens: 64,
         stream: false,
       }),
     })
-    const data: { error?: { message?: string }; choices?: { message?: { content?: string } }[] } =
-      await res.json().catch(() => null)
+    // 先读原始文本,便于区分「非 JSON 响应」与「JSON 但 content 为空」
+    const raw = await res.text()
+    let data: any = null
+    try {
+      data = raw ? JSON.parse(raw) : null
+    } catch {
+      throw new Error(
+        `响应不是有效 JSON(HTTP ${res.status}):${raw.slice(0, 200) || '空响应'}`
+      )
+    }
     if (!res.ok) {
       throw new Error(data?.error?.message ?? `HTTP ${res.status}`)
     }
-    const content = data?.choices?.[0]?.message?.content ?? ''
-    if (!content.trim()) throw new Error('模型返回内容为空')
+    const content = data?.choices?.[0]?.message?.content
+    if (typeof content !== 'string' || !content.trim()) {
+      const reason = data?.choices?.[0]?.finish_reason
+      const excerpt = raw.slice(0, 300)
+      throw new Error(
+        `模型返回内容为空${reason ? `(finish_reason=${reason})` : ''},响应:${excerpt}`
+      )
+    }
     return content.trim()
   } catch (err: any) {
     if (err?.name === 'AbortError') throw new Error('连接超时,请检查 Endpoint 或网络')

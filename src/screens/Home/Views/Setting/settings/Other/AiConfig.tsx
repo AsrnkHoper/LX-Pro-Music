@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { View } from 'react-native'
 
 import InputItem, { type InputItemProps } from '../../components/InputItem'
@@ -6,6 +6,7 @@ import Button from '../../components/Button'
 import SubTitle from '../../components/SubTitle'
 import CheckBox from '@/components/common/CheckBox'
 import Text from '@/components/common/Text'
+import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
 import { useI18n } from '@/lang'
 import { useSettingValue } from '@/store/setting/hook'
 import { useTheme } from '@/store/theme/hook'
@@ -22,6 +23,8 @@ export default memo(() => {
   const model = useSettingValue('common.aiModel')
   const tone = useSettingValue('common.aiTone')
   const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const resultRef = useRef<ConfirmAlertType>(null)
 
   const handleChanged =
     (key: 'common.aiEndpoint' | 'common.aiApiKey' | 'common.aiNickname' | 'common.aiModel'): InputItemProps['onChanged'] =>
@@ -34,13 +37,14 @@ export default memo(() => {
     setTesting(true)
     testAiConnection({ endpoint, apiKey, model })
       .then((reply) => {
-        toast(`${t('setting_other_ai_test_success')}${reply}`)
+        setTestResult({ success: true, message: reply })
       })
       .catch((err: Error) => {
-        toast(`${t('setting_other_ai_test_fail')}${err?.message ?? err}`)
+        setTestResult({ success: false, message: `${t('setting_other_ai_test_fail_prefix')}${err?.message ?? err}` })
       })
       .finally(() => {
         setTesting(false)
+        resultRef.current?.setVisible(true)
       })
   }
 
@@ -131,6 +135,16 @@ export default memo(() => {
         </Button>
         <Button onPress={handleTryGenerate}>{t('setting_other_ai_try_btn')}</Button>
       </View>
+
+      {/* 测试连接结果弹窗(项目 UI,滞留时间足够) */}
+      <ConfirmAlert
+        ref={resultRef}
+        title={testResult?.success ? t('setting_other_ai_test_success') : t('setting_other_ai_test_fail')}
+        text={testResult?.message ?? ''}
+        confirmText="确定"
+        showConfirm
+        bgHide={false}
+      />
     </SubTitle>
   )
 })
