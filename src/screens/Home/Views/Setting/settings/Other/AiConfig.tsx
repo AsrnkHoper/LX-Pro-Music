@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { View } from 'react-native'
 
 import InputItem, { type InputItemProps } from '../../components/InputItem'
@@ -26,6 +26,12 @@ export default memo(() => {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const resultRef = useRef<ConfirmAlertType>(null)
 
+  // 测试结果就绪 → 打开弹窗(消除 setTestResult 与 setVisible 的时序竞态,
+  // 避免弹窗先打开、内容后更新导致显示旧/空内容)
+  useEffect(() => {
+    if (testResult) resultRef.current?.setVisible(true)
+  }, [testResult])
+
   const handleChanged =
     (key: 'common.aiEndpoint' | 'common.aiApiKey' | 'common.aiNickname' | 'common.aiModel'): InputItemProps['onChanged'] =>
     (text, callback) => {
@@ -35,6 +41,7 @@ export default memo(() => {
 
   const handleTestConnection = () => {
     setTesting(true)
+    setTestResult(null) // 清旧结果,避免弹窗闪旧内容
     testAiConnection({ endpoint, apiKey, model })
       .then((reply) => {
         setTestResult({ success: true, message: reply })
@@ -44,7 +51,6 @@ export default memo(() => {
       })
       .finally(() => {
         setTesting(false)
-        resultRef.current?.setVisible(true)
       })
   }
 
@@ -136,14 +142,15 @@ export default memo(() => {
         <Button onPress={handleTryGenerate}>{t('setting_other_ai_try_btn')}</Button>
       </View>
 
-      {/* 测试连接结果弹窗(项目 UI,滞留时间足够) */}
+      {/* 测试连接结果弹窗:单按钮「确定」,点击关闭并清理 */}
       <ConfirmAlert
         ref={resultRef}
         title={testResult?.success ? t('setting_other_ai_test_success') : t('setting_other_ai_test_fail')}
         text={testResult?.message ?? ''}
-        confirmText="确定"
-        showConfirm
+        cancelText="确定"
+        showConfirm={false}
         bgHide={false}
+        onCancel={() => setTestResult(null)}
       />
     </SubTitle>
   )

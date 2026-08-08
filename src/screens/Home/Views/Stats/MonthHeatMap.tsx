@@ -119,6 +119,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
       })
       setDayEvents([])
       toast('已删除当天统计')
+      deleteConfirmRef.current?.setVisible(false) // 删除成功后自动关弹窗
     })
     setPendingDeleteDate(null)
   }, [pendingDeleteDate])
