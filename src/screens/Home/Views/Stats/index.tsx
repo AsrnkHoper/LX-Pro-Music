@@ -5,6 +5,7 @@ import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
+import AiConfig from '../Setting/settings/Other/AiConfig'
 import { getStatsOverview, getStatsTopSongs, getStatsTopArtists, getStatsDailyByDay } from '@/core/player/stats'
 import { formatDuration, getTodayText } from './utils'
 
@@ -152,6 +153,11 @@ export default memo(() => {
         <View style={styles.section}>
           <Text size={15} color={theme['c-font']} style={styles.sectionTitle}>歌手排行</Text>
           {renderRankList(artistItems)}
+        </View>
+
+        {/* AI 听歌报告(可选增强,不填 Key 不影响统计) */}
+        <View style={styles.section}>
+          <AiConfig />
         </View>
       </ScrollView>
     </View>

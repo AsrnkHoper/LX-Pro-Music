@@ -111,17 +111,25 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
   const handleConfirmDelete = useCallback(() => {
     const dateText = pendingDeleteDate
     if (!dateText) return
-    void deleteStatsDay(dateText).then(() => {
-      setHeatMap(prev => {
-        const next = new Map(prev)
-        next.delete(dateText)
-        return next
+    void deleteStatsDay(dateText)
+      .then(() => {
+        setHeatMap(prev => {
+          const next = new Map(prev)
+          next.delete(dateText)
+          return next
+        })
+        setDayEvents([])
+        toast('已删除当天统计')
+        // 先关弹窗再清数据,避免「文字已空、弹窗未关」的空弹窗间隙
+        deleteConfirmRef.current?.setVisible(false)
+        setPendingDeleteDate(null)
       })
-      setDayEvents([])
-      toast('已删除当天统计')
-      deleteConfirmRef.current?.setVisible(false) // 删除成功后自动关弹窗
-    })
-    setPendingDeleteDate(null)
+      .catch(() => {
+        // 删除失败:关弹窗 + 清数据,避免弹窗卡死
+        deleteConfirmRef.current?.setVisible(false)
+        setPendingDeleteDate(null)
+        toast('删除失败')
+      })
   }, [pendingDeleteDate])
 
   return (
