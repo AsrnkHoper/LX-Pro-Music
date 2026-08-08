@@ -29,7 +29,7 @@ jobs:
                  /tmp/metro-* \
                  app/build/intermediates/merged_assets \
                  app/build/intermediates/assets
-          ./gradlew assembleDebug --no-build-cache --no-configuration-cache --console=plain
+          ./gradlew assembleDebug --no-build-cache --no-configuration-cache --rerun-tasks --console=plain
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
