@@ -207,6 +207,11 @@ export const migratePlayerCache = async () => {
 
 export const destroy = async () => {
   if (global.lx.playerStatus.isIniting || !global.lx.playerStatus.isInitialized) return
+  // 销毁播放器前触发 pause,让统计/打点等结算当前播放会话
+  // (定时关闭、通知划掉等走 destroy 退出的路径,否则统计时长会丢失)
+  try {
+    global.app_event.pause()
+  } catch (e) { /* ignore */ }
   await TrackPlayer.destroy()
   global.lx.playerStatus.isInitialized = false
 }
