@@ -14,7 +14,8 @@ runs:
       with:
         distribution: 'microsoft'
         java-version: '17'
-        cache: gradle
+        # 不用 gradle 缓存:曾导致 JS bundle 复用旧产物,二代代码未被打进 APK
+        # cache: gradle
 
     - name: Get npm cache directory
       id: npm-cache-dir
