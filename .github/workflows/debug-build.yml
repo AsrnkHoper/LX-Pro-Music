@@ -21,6 +21,10 @@ jobs:
         run: |
           cd android
           chmod +x ./gradlew
+          # 诊断:确认源码里二代 AI 配置存在 + bundle 产物路径
+          echo "=== 源码检查 ==="
+          ls -la ../src/screens/Home/Views/Setting/settings/Other/AiConfig.tsx || echo "!!! AiConfig.tsx 缺失"
+          grep -c "AiConfig" ../src/screens/Home/Views/Stats/index.tsx || echo "!!! index.tsx 无 AiConfig"
           # 彻底清理 Metro 缓存 + gradle bundle 产物,强制用最新源码重新打包 JS
           rm -rf app/build/generated/assets \
                  app/build/generated/react \
@@ -28,8 +32,14 @@ jobs:
                  ~/.metro \
                  /tmp/metro-* \
                  app/build/intermediates/merged_assets \
-                 app/build/intermediates/assets
+                 app/build/intermediates/assets \
+                 app/build/ASSETS \
+                 app/build/generated/autolinking \
+                 app/build/generated/res/react
           ./gradlew assembleDebug --no-build-cache --no-configuration-cache --rerun-tasks --console=plain
+          echo "=== bundle 产物检查 ==="
+          find app/build -name "index.android.bundle" -exec ls -la {} \;
+          find app/build -name "index.android.bundle" -exec grep -c "AiConfig" {} \; || echo "bundle 里无 AiConfig"
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
