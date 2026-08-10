@@ -34,7 +34,7 @@ export default forwardRef(({ searchType }, ref) => {
     searchPromise.then(result => {
       setList(isRefresh ? result.list : [...list, ...result.list])
       searchInfoRef.current.page = page + 1
-      searchInfoRef.current.hasMore = result.list.length > 0 && result.total > (page * 30)
+      searchInfoRef.current.hasMore = result.list.length > 0 && page < result.allPage
     }).catch(() => {}).finally(() => {
       setLoading(false)
     })
