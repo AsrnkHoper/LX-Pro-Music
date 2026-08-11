@@ -61,8 +61,16 @@ const settleSession = () => {
     })
   }
 
-  if (!playerState.isPlay || session.lastProgressTime <= 0) {
-    finalize()
+  if (session.lastProgressTime <= 0) {
+    // lastProgressTime 还没建立(轮询从未跑过,如锁屏立即定时关闭)
+    // 也尝试用当前位置补差,避免整段时长丢失
+    void getPosition().then((position) => {
+      if (position && position > 0) {
+        finalize(position)
+      } else {
+        finalize()
+      }
+    }).catch(() => finalize())
     return
   }
 
