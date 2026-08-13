@@ -41,49 +41,20 @@ interface Session {
 let currentSession: Session | null = null
 let pollTimer: number | null = null
 
-/** 结算当前会话:补上最后一段播放差值,再写入统计层 */
+/** 结算当前会话:写入统计层(直接用轮询累计的时长,简单可靠) */
 const settleSession = () => {
   const session = currentSession
   if (!session) return
   currentSession = null
+  if (session.accumulatedTime <= 0) return
 
-  // 补差:无论轮询是否在跑(锁屏/后台可能长时间没轮询),
-  // 结算时用当前播放位置把从 lastProgressTime 到现在的差值补上
-  const finalize = (extraTime = 0) => {
-    const totalTime = session.accumulatedTime + extraTime
-    if (totalTime <= 0) return
-    void addStatsRecordQueued({
-      musicInfo: session.musicInfo,
-      playedAt: session.playedAt,
-      playTime: totalTime,
-      maxTime: session.maxTime,
-      isEffective: session.isEffective,
-    })
-  }
-
-  if (session.lastProgressTime <= 0) {
-    // lastProgressTime 还没建立(轮询从未跑过,如锁屏立即定时关闭)
-    // 也尝试用当前位置补差,避免整段时长丢失
-    void getPosition().then((position) => {
-      if (position && position > 0) {
-        finalize(position)
-      } else {
-        finalize()
-      }
-    }).catch(() => finalize())
-    return
-  }
-
-  void getPosition().then((position) => {
-    if (!position || position <= session.lastProgressTime) {
-      finalize()
-      return
-    }
-    const delta = position - session.lastProgressTime
-    // 只补合理差值(锁屏长时间累计;跳过进度条回退)
-    const extra = delta > 0 && delta < MAX_CONTINUOUS_DELTA ? delta : 0
-    finalize(extra)
-  }).catch(() => finalize())
+  void addStatsRecordQueued({
+    musicInfo: session.musicInfo,
+    playedAt: session.playedAt,
+    playTime: session.accumulatedTime,
+    maxTime: session.maxTime,
+    isEffective: session.isEffective,
+  })
 }
 
 const createSession = (musicInfo: LX.Music.MusicInfo) => {
