@@ -449,6 +449,7 @@
   "setting_other_ai_test_fail": "连接失败",
   "setting_other_ai_test_fail_prefix": "失败原因:",
   "setting_other_ai_try_btn": "试生成本周报告",
+  "setting_other_ai_archive_btn": "报告档案馆",
   "setting_other_ai_try_tip": "试生成将在完整报告管线接通后可用,当前可先用「测试连接」验证配置",
   "setting_play_audio_offload": "启用音频卸载",
   "setting_play_audio_offload_tip": "启用音频卸载可以节省耗电量，但在某些设备上可能会出现所有歌曲都提示「音频加载出错」或「无法完整播放整首歌」的问题，这是由于当前系统的 bug 导致的。\n\n对于遇到这个问题的人可以关闭该选项后完全重启应用再试。",

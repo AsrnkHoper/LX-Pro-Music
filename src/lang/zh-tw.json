@@ -406,6 +406,7 @@
   "setting_other_ai_test_fail": "連線失敗",
   "setting_other_ai_test_fail_prefix": "失敗原因:",
   "setting_other_ai_try_btn": "試生成本週報告",
+  "setting_other_ai_archive_btn": "報告檔案館",
   "setting_other_ai_try_tip": "試生成將在完整報告管線接通後可用,目前可先用「測試連線」驗證設定",
   "setting_play_audio_offload": "啟用音訊移除",
   "setting_play_audio_offload_tip": "啟用音訊移除可以節省耗電量，但在某些裝置上可能會出現所有歌曲都提示「音訊載入出錯」或「無法完整播放整首歌」的問題，這是由於目前系統的 bug 導致的。\n\n對於遇到這個問題的人可以關閉該選項後完全重啟應用再試。",

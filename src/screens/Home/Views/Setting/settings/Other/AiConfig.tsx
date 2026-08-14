@@ -145,6 +145,9 @@ export default memo(() => {
         <Button onPress={handleTryGenerate} disabled={testing}>
           {testing ? t('setting_other_ai_generating') : t('setting_other_ai_try_btn')}
         </Button>
+        <Button onPress={() => reportRef.current?.openArchive()}>
+          {t('setting_other_ai_archive_btn')}
+        </Button>
       </View>
 
       {/* 测试连接结果弹窗:单按钮「确定」,点击关闭并清理 */}
