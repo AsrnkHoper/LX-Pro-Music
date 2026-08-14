@@ -281,8 +281,9 @@ export const finalizeReport = (raw: unknown, facts: PeriodFacts, period: { start
   return result
 }
 
-/** 生成本周报告(完整闭环:组装 → 请求 → 校验重试 → 本地补算 → 缓存) */
-export const generateWeeklyReport = async (): Promise<GenerateReportResult> => {
+/** 生成本周报告(完整闭环:组装 → 请求 → 校验重试 → 本地补算 → 缓存)
+ * @param force true=强制重新请求 AI(跳过缓存,试生成用);false=缓存命中直接返回 */
+export const generateWeeklyReport = async (force = false): Promise<GenerateReportResult> => {
   try {
     const config = getAiConfig()
     if (!config.endpoint.trim() || !config.model.trim()) {
@@ -293,9 +294,11 @@ export const generateWeeklyReport = async (): Promise<GenerateReportResult> => {
     const endTime = new Date(`${period.end}T23:59:59`).getTime()
     const facts = await buildPeriodFacts(startTime, endTime)
 
-    // 缓存命中
-    const cached = await getCachedReport(period, facts)
-    if (cached) return { ok: true, report: cached, cached: true }
+    // 缓存命中(force=true 时跳过,试生成永远真请求 AI)
+    if (!force) {
+      const cached = await getCachedReport(period, facts)
+      if (cached) return { ok: true, report: cached, cached: true }
+    }
 
     // 组装请求
     const system = buildAiSystemForReport()

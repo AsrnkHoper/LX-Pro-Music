@@ -23,7 +23,8 @@ export default memo(() => {
   const nickname = useSettingValue('common.aiNickname')
   const model = useSettingValue('common.aiModel')
   const tone = useSettingValue('common.aiTone')
-  const [testing, setTesting] = useState(false)
+  const [testTesting, setTestTesting] = useState(false)
+  const [genTesting, setGenTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const resultRef = useRef<ConfirmAlertType>(null)
   const reportRef = useRef<ReportViewerType>(null)
@@ -42,7 +43,7 @@ export default memo(() => {
     }
 
   const handleTestConnection = () => {
-    setTesting(true)
+    setTestTesting(true)
     setTestResult(null) // 清旧结果,避免弹窗闪旧内容
     testAiConnection({ endpoint, apiKey, model })
       .then((reply) => {
@@ -52,13 +53,16 @@ export default memo(() => {
         setTestResult({ success: false, message: `${t('setting_other_ai_test_fail_prefix')}${err?.message ?? err}` })
       })
       .finally(() => {
-        setTesting(false)
+        setTestTesting(false)
       })
   }
 
   const handleTryGenerate = () => {
+    setGenTesting(true) // 防止重复点击
     // 打开全屏报告页并触发生成(自带进度条/已等待秒数反馈)
     reportRef.current?.generate()
+    // 全屏页打开后按钮不可见,延迟复位(避免下次点击被禁)
+    setTimeout(() => setGenTesting(false), 1500)
   }
 
   return (
@@ -139,11 +143,11 @@ export default memo(() => {
       </View>
 
       <View style={styles.btnContainer}>
-        <Button onPress={handleTestConnection} disabled={testing}>
-          {testing ? t('setting_other_ai_testing') : t('setting_other_ai_test_btn')}
+        <Button onPress={handleTestConnection} disabled={testTesting}>
+          {testTesting ? t('setting_other_ai_testing') : t('setting_other_ai_test_btn')}
         </Button>
-        <Button onPress={handleTryGenerate} disabled={testing}>
-          {testing ? t('setting_other_ai_generating') : t('setting_other_ai_try_btn')}
+        <Button onPress={handleTryGenerate} disabled={genTesting}>
+          {genTesting ? t('setting_other_ai_generating') : t('setting_other_ai_try_btn')}
         </Button>
         <Button onPress={() => reportRef.current?.openArchive()}>
           {t('setting_other_ai_archive_btn')}

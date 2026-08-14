@@ -65,7 +65,7 @@ export default memo(
     }, [])
 
     /** 生成本周报告(带真实进度反馈:已等待秒数 + 循环进度条 + 三态) */
-    const handleGenerate = useCallback(() => {
+    const handleGenerate = useCallback((force = false) => {
       setGenerating(true)
       setGenStage(0)
       setWaitSeconds(0)
@@ -77,7 +77,7 @@ export default memo(
       const secTimer = setInterval(() => {
         setWaitSeconds((s) => s + 1)
       }, 1000)
-      generateWeeklyReport()
+      generateWeeklyReport(force)
         .then((res) => {
           if (res.ok) {
             setReport(res.report)
@@ -93,12 +93,12 @@ export default memo(
         })
     }, [visible])
 
-    /** 打开全屏页并立即开始生成(带进度条反馈) */
+    /** 打开全屏页并立即开始生成(带进度条反馈;force=true 强制重新请求 AI,不用缓存) */
     const generate = useCallback(() => {
       setReport(null)
       setViewMode('report')
       setVisible(true)
-      handleGenerate()
+      handleGenerate(true) // 试生成:强制重新请求 AI,不用缓存
     }, [handleGenerate])
 
     useImperativeHandle(ref, () => ({
@@ -188,7 +188,7 @@ export default memo(
               </Text>
               <TouchableOpacity
                 style={[styles.genBtn, { backgroundColor: theme['c-primary'] }]}
-                onPress={handleGenerate}
+                onPress={() => handleGenerate(true)}
               >
                 <Text size={15} color="#FFFFFF">生成本周报告</Text>
               </TouchableOpacity>
