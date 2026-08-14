@@ -66,11 +66,17 @@ export const addStatsRecord = async (params: {
 }) => {
   const { musicInfo, playedAt, playTime, maxTime, isEffective } = params
 
-  // 入账门槛:播放 ≥50% 且 ≥30 秒(短歌听完也入账,长歌试听不入账)
-  // - 59 秒的歌听完(100%)→ 入账;听 30 秒(51%)→ 入账
-  // - 5 分钟的歌听 30 秒(10%)→ 不入账;试听 <30 秒一律不入
+  // 入账门槛:
+  // - 短歌(总时长 <30 秒,如剪切过的片段):必须听完(100%)才计入
+  //   (有人喜欢听十几二十秒的片段歌,听完整首应算数)
+  // - 正常歌(≥30 秒):播放 ≥30 秒 且 ≥50%
   const playRatio = maxTime > 0 ? playTime / maxTime : 0
-  if (playTime < MIN_RECORD_TIME || playRatio < MIN_RECORD_RATIO) return
+  if (maxTime > 0 && maxTime < MIN_RECORD_TIME) {
+    // 短歌:听完才入账(实际播放不可能超过 maxTime,等价于 100%)
+    if (playTime < maxTime) return
+  } else {
+    if (playTime < MIN_RECORD_TIME || playRatio < MIN_RECORD_RATIO) return
+  }
 
   const date = getHistoryDay(playedAt)
 
