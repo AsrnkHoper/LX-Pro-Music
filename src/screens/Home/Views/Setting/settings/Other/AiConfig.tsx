@@ -13,6 +13,7 @@ import { useTheme } from '@/store/theme/hook'
 import { updateSetting } from '@/core/common'
 import { createStyle, toast } from '@/utils/tools'
 import { AI_TONES, AI_PROVIDERS, testAiConnection } from '@/core/stats/ai'
+import { generateWeeklyReport } from '@/core/stats/report'
 
 export default memo(() => {
   const t = useI18n()
@@ -55,7 +56,33 @@ export default memo(() => {
   }
 
   const handleTryGenerate = () => {
-    toast(t('setting_other_ai_try_tip'))
+    setTesting(true)
+    setTestResult(null)
+    generateWeeklyReport()
+      .then((res) => {
+        if (res.ok) {
+          const r = res.report
+          const headline = r.poster?.headline || r.identity?.period_name || '本周报告已生成'
+          const summary = [
+            `周期:${r.period.start} ~ ${r.period.end}`,
+            `播放:${r.overview.total_plays}次 | ${r.overview.total_duration_min}分钟 | ${r.overview.active_days}天`,
+            r.overview.top_song ? `最多:${r.overview.top_song.name} - ${r.overview.top_song.singer}` : '',
+            r.stories?.cover ? `故事:${r.stories.cover.slice(0, 50)}${r.stories.cover.length > 50 ? '…' : ''}` : '',
+            res.cached ? '(命中缓存,未重新请求)' : '',
+          ]
+            .filter(Boolean)
+            .join('\n')
+          setTestResult({ success: true, message: `📊 ${headline}\n${summary}` })
+        } else {
+          setTestResult({ success: false, message: `${t('setting_other_ai_test_fail_prefix')}${res.error}` })
+        }
+      })
+      .catch((err: Error) => {
+        setTestResult({ success: false, message: `${t('setting_other_ai_test_fail_prefix')}${err?.message ?? err}` })
+      })
+      .finally(() => {
+        setTesting(false)
+      })
   }
 
   return (

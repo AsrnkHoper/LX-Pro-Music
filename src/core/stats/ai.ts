@@ -105,6 +105,91 @@ const normalizeChatUrl = (endpoint: string): string => {
   return `${base}/chat/completions`
 }
 
+/** 结构化输出能力:json_schema / json_object / none(纯 prompt) */
+export type AiCapability = 'none' | 'json_object' | 'json_schema'
+
+/** chat/completions 请求参数 */
+export interface ChatCompletionParams {
+  endpoint: string
+  apiKey: string
+  model: string
+  system: string
+  user: string
+  /** 服务商结构化输出能力(三层降级:json_schema > json_object > none) */
+  capability?: AiCapability
+  maxTokens?: number
+  timeoutMs?: number
+}
+
+/**
+ * 发 chat/completions 请求(功能块②报告生成用)
+ * - 按能力白名单三层降级:json_schema(发 response_format) > json_object(发 + prompt 含 json 字样) > none(纯 prompt)
+ * - 返回模型 content(原始文本,由上层 parse)
+ */
+export const chatCompletion = async (params: ChatCompletionParams): Promise<string> => {
+  const { apiKey, model, system, user } = params
+  const capability = params.capability ?? 'none'
+  const maxTokens = params.maxTokens ?? 2048
+  const timeoutMs = params.timeoutMs ?? 120000
+  if (!params.endpoint.trim()) throw new Error('请先填写 Endpoint')
+  if (!model.trim()) throw new Error('请先填写模型名称')
+  const url = normalizeChatUrl(params.endpoint)
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (apiKey.trim()) headers.Authorization = `Bearer ${apiKey.trim()}`
+
+  const body: Record<string, unknown> = {
+    model: model.trim(),
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    max_tokens: maxTokens,
+    stream: false,
+    temperature: 0.8,
+  }
+  // 能力降级:能发 response_format 就发
+  if (capability === 'json_schema') {
+    body.response_format = { type: 'json_object' }
+  } else if (capability === 'json_object') {
+    body.response_format = { type: 'json_object' }
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify(body),
+    })
+    const raw = await res.text()
+    let data: any = null
+    try {
+      data = raw ? JSON.parse(raw) : null
+    } catch {
+      throw new Error(`响应不是有效 JSON(HTTP ${res.status}):${raw.slice(0, 200) || '空响应'}`)
+    }
+    if (!res.ok) {
+      throw new Error(data?.error?.message ?? `HTTP ${res.status}`)
+    }
+    const content = data?.choices?.[0]?.message?.content
+    if (typeof content !== 'string' || !content.trim()) {
+      // 推理模型 content 空但 reasoning_content 有 → 返回空串,上层走重试/本地补算
+      const reasoning = data?.choices?.[0]?.message?.reasoning_content
+      throw new Error(
+        `模型返回内容为空(finish_reason=${data?.choices?.[0]?.finish_reason ?? '?'})${reasoning ? ',模型只输出了推理过程' : ''}`
+      )
+    }
+    return content.trim()
+  } catch (err: any) {
+    if (err?.name === 'AbortError') throw new Error('请求超时,请检查网络或稍后重试')
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** 测试连接:发最小 chat/completions 请求,验证 Endpoint + Key + Model 可用 */
 export const testAiConnection = async (
   config: { endpoint: string; apiKey: string; model: string },
