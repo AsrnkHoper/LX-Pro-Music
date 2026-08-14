@@ -55,14 +55,7 @@ const YearOverview = memo(() => {
     setViewMode(mode)
   }, [])
 
-  if (!isVisible) {
-    return (
-      <TouchableOpacity style={styles.toggleBtn} onPress={toggle}>
-        <Text size={14} color={theme['c-primary']}>查看年度总览</Text>
-      </TouchableOpacity>
-    )
-  }
-
+  // ⚠️ hooks 必须在所有条件 return 之前调用(React 规则,否则 "Rendered more hooks")
   const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
   const currentYear = new Date().getFullYear()
   const todayText = getTodayText()
@@ -70,6 +63,14 @@ const YearOverview = memo(() => {
     () => monthNames.map((_, index) => new Date(currentYear, index, 1)),
     [currentYear, monthNames],
   )
+
+  if (!isVisible) {
+    return (
+      <TouchableOpacity style={styles.toggleBtn} onPress={toggle}>
+        <Text size={14} color={theme['c-primary']}>查看年度总览</Text>
+      </TouchableOpacity>
+    )
+  }
 
   return (
     <View>
