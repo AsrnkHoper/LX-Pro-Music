@@ -16,6 +16,16 @@ jobs:
       - name: Setup Env
         uses: ./.github/actions/setup
 
+      # 缓存 gradle 编译依赖(加速构建),但只缓存 ~/.gradle/caches,
+      # 不缓存 app/build 产物(bundle 每次用最新源码重新打包,避免旧代码)
+      - name: Cache Gradle deps
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: Build Debug APK
         shell: bash
         run: |
