@@ -126,10 +126,16 @@ export const testAiConnection = async (
       body: JSON.stringify({
         model: model.trim(),
         messages: [
-          { role: 'system', content: '你是一个连接测试助手,请只回复两个字:成功' },
+          {
+            role: 'system',
+            // 明确要求直接回答,不给推理模型留思考空间(测试连接只验证连通性,不测推理能力)
+            content:
+              '你是连接测试助手。这是连通性测试,直接回复两个字"成功",不要思考、不要解释、不要输出任何推理过程。',
+          },
           { role: 'user', content: 'ping' },
         ],
-        max_tokens: 64,
+        // 给足输出空间:推理模型若仍输出 reasoning_content,也足够轮到 content
+        max_tokens: 512,
         stream: false,
       }),
     })
@@ -148,6 +154,13 @@ export const testAiConnection = async (
     }
     const content = data?.choices?.[0]?.message?.content
     if (typeof content !== 'string' || !content.trim()) {
+      // 推理模型可能把 token 都花在 reasoning_content 上(content 空但连接是通的)
+      // 测试连接只验证连通性:只要模型有响应(有 choices/reasoning_content),就算连接成功
+      const reasoning = data?.choices?.[0]?.message?.reasoning_content
+      const hasResponse = Array.isArray(data?.choices) && data.choices.length > 0
+      if (hasResponse && (reasoning || data?.choices?.[0]?.finish_reason === 'length')) {
+        return '成功(连接可用)'
+      }
       const reason = data?.choices?.[0]?.finish_reason
       const excerpt = raw.slice(0, 300)
       throw new Error(
