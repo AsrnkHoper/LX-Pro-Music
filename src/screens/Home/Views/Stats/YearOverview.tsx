@@ -20,6 +20,8 @@ const YearOverview = memo(() => {
   const [viewMode, setViewMode] = useState<'bar' | 'heat'>('bar')
   const [monthDurations, setMonthDurations] = useState<number[]>([])
   const [dayDurations, setDayDurations] = useState<Map<string, number>>(new Map())
+  // 年度热力图分批渲染:一次性渲染 12×42=504 格会卡顿,逐月递增渲染
+  const [visibleMonths, setVisibleMonths] = useState(0)
 
   const loadYear = useCallback(() => {
     const year = new Date().getFullYear()
@@ -41,6 +43,22 @@ const YearOverview = memo(() => {
   useEffect(() => {
     if (isVisible) loadYear()
   }, [isVisible, loadYear])
+
+  // 切到热力图视图时,分帧逐月渲染(每 50ms 多显示 2 个月),避免一次性 504 格卡顿
+  useEffect(() => {
+    if (viewMode !== 'heat') return
+    setVisibleMonths(0)
+    const timer = setInterval(() => {
+      setVisibleMonths(prev => {
+        if (prev >= 12) {
+          clearInterval(timer)
+          return 12
+        }
+        return prev + 2
+      })
+    }, 50)
+    return () => clearInterval(timer)
+  }, [viewMode, isVisible])
 
   // 条形视图满色基准 = 全年听歌最多的月
   const maxMonthDuration = useMemo(() => Math.max(1, ...monthDurations), [monthDurations])
@@ -126,6 +144,8 @@ const YearOverview = memo(() => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.yearGrid}>
             {monthDates.map((monthDate, index) => {
+              // 分批渲染:只渲染 visibleMonths 之前的部分,避免一次性 504 格卡顿
+              if (index >= visibleMonths) return null
               const monthDays = getMonthDays(monthDate)
               return (
                 <View key={monthNames[index]} style={styles.monthCard}>
