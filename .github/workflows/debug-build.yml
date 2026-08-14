@@ -45,5 +45,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          # 只上传 arm64-v8a 单架构(手机用的),避免 universal 全架构包导致 208MB/101MB
+          path: android/app/build/outputs/apk/debug/*arm64-v8a.apk
           if-no-files-found: error
