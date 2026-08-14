@@ -177,7 +177,7 @@ export default memo(({ report }: { report: AiReportV2 }) => {
           activeOpacity={0.85}
           style={[
             styles.card,
-            { width: windowWidth - 40, backgroundColor: item.bgColor || theme['c-primary-background'] },
+            { width: windowWidth - 48, backgroundColor: item.bgColor || theme['c-primary-background'] },
           ]}
           onPress={() => {
             if (item.letter) {
@@ -229,12 +229,11 @@ export default memo(({ report }: { report: AiReportV2 }) => {
         renderItem={renderCard}
         keyExtractor={(_, i) => `card_${i}`}
         horizontal
-        pagingEnabled
         showsHorizontalScrollIndicator={false}
-        snapToInterval={windowWidth - 40}
+        snapToInterval={windowWidth - 48}
         decelerationRate="fast"
         onMomentumScrollEnd={(e) => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / (windowWidth - 40))
+          const idx = Math.round(e.nativeEvent.contentOffset.x / (windowWidth - 48))
           setPage(Math.min(Math.max(idx, 0), cards.length - 1))
         }}
         contentContainerStyle={styles.listContent}
@@ -272,12 +271,12 @@ const styles = createStyle({
   },
   listContent: {
     paddingVertical: 8,
+    paddingHorizontal: 24,
   },
   card: {
     flex: 1,
     borderRadius: 16,
     padding: 20,
-    marginHorizontal: 8,
     justifyContent: 'space-between',
   },
   cardTop: {
