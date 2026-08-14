@@ -315,6 +315,7 @@ export const generateWeeklyReport = async (force = false): Promise<GenerateRepor
       user: userData,
       capability,
       maxTokens: 8192,
+      timeoutMs: 240000,
     })
 
     // 第二层:校验 + 重试(最多 2 次)
@@ -336,6 +337,7 @@ export const generateWeeklyReport = async (force = false): Promise<GenerateRepor
             user: userData,
             capability,
             maxTokens: 8192,
+      timeoutMs: 240000,
           })
           const parsed2 = parseReportV2(retry)
           if (validateReportV2(parsed2).length === 0) {

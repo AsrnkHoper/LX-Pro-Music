@@ -143,6 +143,9 @@ export default memo(
               <Text size={12} color={theme['c-500']} style={styles.genWait}>
                 已等待 {waitSeconds} 秒,AI 正在分析你的听歌数据…
               </Text>
+              <Text size={11} color={theme['c-500']} style={styles.genWait}>
+                推理模型生成较慢,通常需要 1-3 分钟,请耐心等待
+              </Text>
             </View>
           ) : viewMode === 'archive' ? (
             <ScrollView style={styles.archiveList}>
