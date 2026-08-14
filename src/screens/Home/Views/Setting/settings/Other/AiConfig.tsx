@@ -14,6 +14,7 @@ import { updateSetting } from '@/core/common'
 import { createStyle, toast } from '@/utils/tools'
 import { AI_TONES, AI_PROVIDERS, testAiConnection } from '@/core/stats/ai'
 import { generateWeeklyReport } from '@/core/stats/report'
+import ReportView, { type ReportViewerType } from '@/screens/Home/Views/Stats/ReportView'
 
 export default memo(() => {
   const t = useI18n()
@@ -26,6 +27,7 @@ export default memo(() => {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const resultRef = useRef<ConfirmAlertType>(null)
+  const reportRef = useRef<ReportViewerType>(null)
 
   // 测试结果就绪 → 打开弹窗(消除 setTestResult 与 setVisible 的时序竞态,
   // 避免弹窗先打开、内容后更新导致显示旧/空内容)
@@ -61,18 +63,8 @@ export default memo(() => {
     generateWeeklyReport()
       .then((res) => {
         if (res.ok) {
-          const r = res.report
-          const headline = r.poster?.headline || r.identity?.period_name || '本周报告已生成'
-          const summary = [
-            `周期:${r.period.start} ~ ${r.period.end}`,
-            `播放:${r.overview.total_plays}次 | ${r.overview.total_duration_min}分钟 | ${r.overview.active_days}天`,
-            r.overview.top_song ? `最多:${r.overview.top_song.name} - ${r.overview.top_song.singer}` : '',
-            r.stories?.cover ? `故事:${r.stories.cover.slice(0, 50)}${r.stories.cover.length > 50 ? '…' : ''}` : '',
-            res.cached ? '(命中缓存,未重新请求)' : '',
-          ]
-            .filter(Boolean)
-            .join('\n')
-          setTestResult({ success: true, message: `📊 ${headline}\n${summary}` })
+          // 成功:打开全屏故事流报告(功能块③ 完整展示)
+          reportRef.current?.show(res.report)
         } else {
           setTestResult({ success: false, message: `${t('setting_other_ai_test_fail_prefix')}${res.error}` })
         }
@@ -179,6 +171,9 @@ export default memo(() => {
         bgHide={false}
         onCancel={() => setTestResult(null)}
       />
+
+      {/* 全屏故事流报告(试生成成功后打开) */}
+      <ReportView ref={reportRef} />
     </SubTitle>
   )
 })

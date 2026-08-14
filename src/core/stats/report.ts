@@ -174,6 +174,12 @@ export const getCachedReport = async (
   return cached.fingerprint === fp ? cached.report : null
 }
 
+/** 直接读缓存报告(展示入口用,不校验指纹,纯读取) */
+export const readCachedReport = async (): Promise<AiReportV2 | null> => {
+  const cached = await getData<{ fingerprint: string; report: AiReportV2 } | null>(reportKey)
+  return cached?.report ?? null
+}
+
 /** 保存报告缓存 */
 export const saveReportCache = async (
   period: { start: string; end: string },
