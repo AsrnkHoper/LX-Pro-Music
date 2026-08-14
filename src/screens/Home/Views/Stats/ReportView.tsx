@@ -21,6 +21,8 @@ export interface ReportViewerType {
   show: (report: AiReportV2) => void
   /** 打开报告档案馆(历史报告列表) */
   openArchive: () => void
+  /** 打开全屏页并立即生成(带进度条) */
+  generate: () => void
 }
 
 export default memo(
@@ -62,12 +64,6 @@ export default memo(
       })
     }, [])
 
-    useImperativeHandle(ref, () => ({
-      setVisible,
-      show,
-      openArchive,
-    }))
-
     /** 生成本周报告(带真实进度反馈:已等待秒数 + 循环进度条 + 三态) */
     const handleGenerate = useCallback(() => {
       setGenerating(true)
@@ -96,6 +92,21 @@ export default memo(
           setGenerating(false)
         })
     }, [visible])
+
+    /** 打开全屏页并立即开始生成(带进度条反馈) */
+    const generate = useCallback(() => {
+      setReport(null)
+      setViewMode('report')
+      setVisible(true)
+      handleGenerate()
+    }, [handleGenerate])
+
+    useImperativeHandle(ref, () => ({
+      setVisible,
+      show,
+      openArchive,
+      generate,
+    }))
 
     const genTexts = ['正在读你的数据…', '正在写你的一周…', '正在装信…']
 

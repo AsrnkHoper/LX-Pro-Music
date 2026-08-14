@@ -13,7 +13,6 @@ import { useTheme } from '@/store/theme/hook'
 import { updateSetting } from '@/core/common'
 import { createStyle, toast } from '@/utils/tools'
 import { AI_TONES, AI_PROVIDERS, testAiConnection } from '@/core/stats/ai'
-import { generateWeeklyReport } from '@/core/stats/report'
 import ReportView, { type ReportViewerType } from '@/screens/Home/Views/Stats/ReportView'
 
 export default memo(() => {
@@ -58,23 +57,8 @@ export default memo(() => {
   }
 
   const handleTryGenerate = () => {
-    setTesting(true)
-    setTestResult(null)
-    generateWeeklyReport()
-      .then((res) => {
-        if (res.ok) {
-          // 成功:打开全屏故事流报告(功能块③ 完整展示)
-          reportRef.current?.show(res.report)
-        } else {
-          setTestResult({ success: false, message: `${t('setting_other_ai_test_fail_prefix')}${res.error}` })
-        }
-      })
-      .catch((err: Error) => {
-        setTestResult({ success: false, message: `${t('setting_other_ai_test_fail_prefix')}${err?.message ?? err}` })
-      })
-      .finally(() => {
-        setTesting(false)
-      })
+    // 打开全屏报告页并触发生成(自带进度条/已等待秒数反馈)
+    reportRef.current?.generate()
   }
 
   return (
