@@ -145,7 +145,7 @@ const handlePlay = () => {
 export default () => {
   // 首次启动回填播放历史(仅当统计为空时执行一次)
   void backfillStatsFromHistory()
-  console.log('STATS_V2_MARKER_20260814_SPEED_TEST')
+  console.log('STATS_V2_MARKER_20260814_CACHE_TEST')
 
   global.app_event.on('musicToggled', handleMusicToggled)
   global.app_event.on('pause', handlePause)
