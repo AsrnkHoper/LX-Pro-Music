@@ -10,8 +10,6 @@
  */
 import {
   getStatsDailyByRange,
-  getStatsTopSongs,
-  getStatsTopArtists,
   getStatsEvents,
 } from '@/core/player/stats'
 import { storageDataPrefix } from '@/config/constant'
@@ -63,8 +61,41 @@ export const getCurrentWeekRange = (): { start: string; end: string } => {
 /** 组装周期事实层(本地计算,不发原始事件,请求体 <2KB) */
 export const buildPeriodFacts = async (startTime: number, endTime: number): Promise<PeriodFacts> => {
   const daily = await getStatsDailyByRange(startTime, endTime)
-  const topSongs = (await getStatsTopSongs(5)).slice(0, 5)
-  const topArtists = (await getStatsTopArtists(5)).slice(0, 5)
+  // 周期内原始事件(口径统一:top_song/top_artist/循环之王/新发现 全部按本周期算,不混全年累计)
+  const events = await getStatsEvents()
+  const inRangeEvents = events.filter((e) => e.playedAt >= startTime && e.playedAt <= endTime)
+
+  // 周期内歌曲聚合
+  const songAgg = new Map<string, { id: string; name: string; singer: string; plays: number; firstPlayedAt: number }>()
+  for (const e of inRangeEvents) {
+    const id = e.musicInfo?.id ?? ''
+    if (!id) continue
+    const cur = songAgg.get(id)
+    if (cur) {
+      cur.plays += 1
+      if (e.playedAt < cur.firstPlayedAt) cur.firstPlayedAt = e.playedAt
+    } else {
+      songAgg.set(id, {
+        id,
+        name: e.musicInfo?.name ?? '',
+        singer: e.musicInfo?.singer ?? '',
+        plays: 1,
+        firstPlayedAt: e.playedAt,
+      })
+    }
+  }
+  const topSongs = Array.from(songAgg.values()).sort((a, b) => b.plays - a.plays).slice(0, 5)
+
+  // 周期内歌手聚合
+  const artistAgg = new Map<string, { singer: string; plays: number }>()
+  for (const e of inRangeEvents) {
+    const singer = e.musicInfo?.singer ?? ''
+    if (!singer) continue
+    const cur = artistAgg.get(singer)
+    if (cur) cur.plays += 1
+    else artistAgg.set(singer, { singer, plays: 1 })
+  }
+  const topArtists = Array.from(artistAgg.values()).sort((a, b) => b.plays - a.plays).slice(0, 5)
 
   // overview
   let totalPlays = 0
@@ -88,8 +119,6 @@ export const buildPeriodFacts = async (startTime: number, endTime: number): Prom
   }
 
   // time:从原始事件算时段分布(23:00-05:00 深夜占比)
-  const events = await getStatsEvents()
-  const inRangeEvents = events.filter((e) => e.playedAt >= startTime && e.playedAt <= endTime)
   let lateNightSec = 0
   let totalSec = 0
   for (const e of inRangeEvents) {
@@ -108,7 +137,7 @@ export const buildPeriodFacts = async (startTime: number, endTime: number): Prom
     late_night_ratio: totalSec > 0 ? Number((lateNightSec / totalSec).toFixed(2)) : 0,
   }
 
-  // taste:top 歌/歌手 + 循环之王
+  // taste:top 歌/歌手 + 循环之王 + 新发现(周期内首次听到的)
   const taste: Taste = {
     genre_shift: { top_genres: topArtists.map((a) => a.singer).slice(0, 3) },
     repeat_obsession: topSongs[0]
@@ -142,10 +171,19 @@ export const buildAiPromptBody = (
   return lines.join('\n')
 }
 
-/** 组装给 AI 的完整 system prompt(含 schema 要求) */
+/** 组装给 AI 的完整 system prompt(含 schema 要求 + 随机切入角度) */
 export const buildAiSystemForReport = (): string => {
   const config = getAiConfig()
   const base = buildAiSystemPrompt(config)
+  // 随机切入角度(2026-08-14 琥珀拍板:每次生成换角度,事实不变,解决"随机性低")
+  const angles = [
+    '这次从「深夜与独处」的角度切入,突出深夜聆听的故事感',
+    '这次从「循环与执念」的角度切入,讲你反复听一首歌背后的情绪',
+    '这次从「口味变化」的角度切入,讲你这周在音乐上的探索与回归',
+    '这次从「数据里的温度」角度切入,把次数/时长翻译成生活场景',
+    '这次从「新朋友」角度切入,讲你新发现的歌和歌手',
+  ]
+  const angle = angles[Math.floor(Math.random() * angles.length)]
   const schemaReq = [
     '按以下 JSON schema 返回(不要 Markdown 代码块,直接 JSON):',
     '{',
@@ -157,6 +195,7 @@ export const buildAiSystemForReport = (): string => {
     '  "stories": {"cover": "封面卡长文(<150字)", "numbers": "数据卡长文", "time": "时间卡长文", "taste": "口味卡长文"},',
     '  "poster": {"headline": "海报标题", "ai_copy": "海报文案", "highlight": "亮点"}',
     '}',
+    `写作角度:${angle}`,
     '字段说明:identity.period_name 给周期起名;persona_tags 2-3个标签;compare.genre_shift_summary 口味迁移;',
     'stories 每段<150字且必须基于给定数据;insights 附 data_basis 数据依据;所有数字/歌名只能来自给定数据,一个都不能编。',
   ].join('\n')
@@ -307,8 +346,15 @@ export const generateWeeklyReport = async (): Promise<GenerateReportResult> => {
     }
 
     if (!report) {
-      // 即使校验失败,也用本地事实生成兜底报告(降级展示)
-      report = finalizeReport(null, facts, period)
+      // AI 请求失败/校验不过 → 返回失败,不静默兜底、不入缓存
+      // (琥珀反馈:兜底报告只有本地数据、没人情味,且会污染缓存/档案馆)
+      return { ok: false, error: 'AI 生成失败,请稍后重试' }
+    }
+
+    // 仅当报告包含 AI 原创字段时才算成功,否则重试也失败
+    const hasAiFields = report.identity || report.stories || report.poster || report.insights?.length
+    if (!hasAiFields) {
+      return { ok: false, error: 'AI 返回缺少文案字段,请重试' }
     }
 
     await saveReportCache(period, facts, report)

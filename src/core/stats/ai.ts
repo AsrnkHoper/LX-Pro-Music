@@ -145,7 +145,7 @@ export const chatCompletion = async (params: ChatCompletionParams): Promise<stri
     ],
     max_tokens: maxTokens,
     stream: false,
-    temperature: 0.8,
+    temperature: 1.0, // 2026-08-14 琥珀拍板:语气更自由(0.8→1.0)
   }
   // 能力降级:能发 response_format 就发
   if (capability === 'json_schema') {
