@@ -440,6 +440,7 @@
   "setting_other_ai_provider_tip": "Ollama runs locally: set Endpoint to your PC's LAN IP; other providers need your own Key",
   "setting_other_ai_test_btn": "Test connection",
   "setting_other_ai_testing": "Connecting…",
+  "setting_other_ai_generating": "Generating…",
   "setting_other_ai_test_success": "Connected",
   "setting_other_ai_test_fail": "Failed",
   "setting_other_ai_test_fail_prefix": "Reason: ",

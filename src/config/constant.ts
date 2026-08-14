@@ -93,6 +93,7 @@ export const storageDataPrefix = {
   statsSong: '@stats_song',
   statsEvents: '@stats_events',
   statsReport: '@stats_report',
+  statsReportArchive: '@stats_report_archive',
 } as const
 
 // v0.x.x 版本的 data keys

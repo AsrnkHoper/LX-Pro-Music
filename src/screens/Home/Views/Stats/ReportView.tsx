@@ -5,13 +5,13 @@
  * - 展示:StoryFlow 翻卡
  */
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { ActivityIndicator, Animated, Modal, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Animated, Modal, ScrollView, TouchableOpacity, View } from 'react-native'
 import { useWindowSize } from '@/utils/hooks'
 import { createStyle, toast } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import StoryFlow from './StoryFlow'
-import { readCachedReport, generateWeeklyReport } from '@/core/stats/report'
+import { readCachedReport, generateWeeklyReport, getReportArchive, type ArchiveItem } from '@/core/stats/report'
 import type { AiReportV2 } from '@/core/stats/schema'
 
 /** 全屏报告查看器(ref 控制开关 + 展示报告) */
@@ -19,6 +19,8 @@ export interface ReportViewerType {
   setVisible: (visible: boolean) => void
   /** 展示指定报告(有报告直接展示) */
   show: (report: AiReportV2) => void
+  /** 打开报告档案馆(历史报告列表) */
+  openArchive: () => void
 }
 
 export default memo(
@@ -27,6 +29,8 @@ export default memo(
     const { height: windowHeight } = useWindowSize()
     const [visible, setVisible] = useState(false)
     const [report, setReport] = useState<AiReportV2 | null>(null)
+    const [archive, setArchive] = useState<ArchiveItem[]>([])
+    const [viewMode, setViewMode] = useState<'report' | 'archive'>('report')
     const [generating, setGenerating] = useState(false)
     const [genStage, setGenStage] = useState(0)
     const [waitSeconds, setWaitSeconds] = useState(0)
@@ -45,12 +49,23 @@ export default memo(
 
     const show = useCallback((r: AiReportV2) => {
       setReport(r)
+      setViewMode('report')
       setVisible(true)
+    }, [])
+
+    /** 打开报告档案馆(读历史报告列表) */
+    const openArchive = useCallback(() => {
+      void getReportArchive().then((list) => {
+        setArchive(list)
+        setViewMode('archive')
+        setVisible(true)
+      })
     }, [])
 
     useImperativeHandle(ref, () => ({
       setVisible,
       show,
+      openArchive,
     }))
 
     /** 生成本周报告(带真实进度反馈:已等待秒数 + 循环进度条 + 三态) */
@@ -91,8 +106,20 @@ export default memo(
             <TouchableOpacity onPress={() => setVisible(false)}>
               <Text size={14} color={theme['c-primary']}>← 返回</Text>
             </TouchableOpacity>
-            <Text size={16} color={theme['c-font']} style={styles.headerTitle}>听歌报告</Text>
-            <View style={{ width: 50 }} />
+            <Text size={16} color={theme['c-font']} style={styles.headerTitle}>
+              {viewMode === 'archive' ? '报告档案馆' : '听歌报告'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (viewMode === 'archive') {
+                  setViewMode('report')
+                } else {
+                  openArchive()
+                }
+              }}
+            >
+              <Text size={13} color={theme['c-primary']}>{viewMode === 'archive' ? '当前报告' : '报告档案馆'}</Text>
+            </TouchableOpacity>
           </View>
 
           {generating ? (
@@ -106,6 +133,38 @@ export default memo(
                 已等待 {waitSeconds} 秒,AI 正在分析你的听歌数据…
               </Text>
             </View>
+          ) : viewMode === 'archive' ? (
+            <ScrollView style={styles.archiveList}>
+              {archive.length === 0 ? (
+                <View style={styles.empty}>
+                  <Text size={15} color={theme['c-500']} style={styles.emptyText}>档案馆还是空的</Text>
+                  <Text size={13} color={theme['c-500']} style={styles.emptySub}>
+                    生成一份本周报告后,它会自动存档在这里,离线也能回看
+                  </Text>
+                </View>
+              ) : (
+                archive.map((item) => (
+                  <TouchableOpacity
+                    key={`${item.period.start}_${item.generatedAt}`}
+                    style={[styles.archiveItem, { borderBottomColor: theme['c-border-background'] }]}
+                    onPress={() => {
+                      setReport(item.report)
+                      setViewMode('report')
+                    }}
+                  >
+                    <View style={styles.archiveItemMain}>
+                      <Text size={15} color={theme['c-font']}>{item.report.identity?.period_name || `${item.period.start} ~ ${item.period.end}`}</Text>
+                      <Text size={12} color={theme['c-500']} style={styles.archiveSub}>
+                        {item.period.start} ~ {item.period.end}
+                      </Text>
+                    </View>
+                    <Text size={12} color={theme['c-500']}>
+                      {item.report.overview.total_plays}次
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
           ) : report ? (
             <StoryFlow report={report} />
           ) : (
@@ -167,6 +226,24 @@ const styles = createStyle({
   },
   genWait: {
     marginTop: 12,
+  },
+  archiveList: {
+    flex: 1,
+  },
+  archiveItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 0.5,
+  },
+  archiveItemMain: {
+    flex: 1,
+    marginRight: 8,
+  },
+  archiveSub: {
+    marginTop: 4,
   },
   empty: {
     flex: 1,

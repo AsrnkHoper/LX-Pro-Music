@@ -158,7 +158,9 @@ export default memo(() => {
         <Button onPress={handleTestConnection} disabled={testing}>
           {testing ? t('setting_other_ai_testing') : t('setting_other_ai_test_btn')}
         </Button>
-        <Button onPress={handleTryGenerate}>{t('setting_other_ai_try_btn')}</Button>
+        <Button onPress={handleTryGenerate} disabled={testing}>
+          {testing ? t('setting_other_ai_generating') : t('setting_other_ai_try_btn')}
+        </Button>
       </View>
 
       {/* 测试连接结果弹窗:单按钮「确定」,点击关闭并清理 */}

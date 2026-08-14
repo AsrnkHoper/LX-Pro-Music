@@ -444,6 +444,7 @@
   "setting_other_ai_provider_tip": "Ollama 为本地模型,Endpoint 需改成电脑局域网 IP;其余服务商需自行申请 Key",
   "setting_other_ai_test_btn": "测试连接",
   "setting_other_ai_testing": "连接中…",
+  "setting_other_ai_generating": "生成中…",
   "setting_other_ai_test_success": "连接成功",
   "setting_other_ai_test_fail": "连接失败",
   "setting_other_ai_test_fail_prefix": "失败原因:",
