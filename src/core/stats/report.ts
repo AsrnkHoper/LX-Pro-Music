@@ -245,7 +245,7 @@ export const generateWeeklyReport = async (): Promise<GenerateReportResult> => {
       system,
       user: userData,
       capability,
-      maxTokens: 2048,
+      maxTokens: 8192,
     })
 
     // 第二层:校验 + 重试(最多 2 次)
@@ -266,7 +266,7 @@ export const generateWeeklyReport = async (): Promise<GenerateReportResult> => {
             system: `${system}\n注意:上次返回缺少 ${missing.join(', ')},请补全后重新输出完整 JSON。`,
             user: userData,
             capability,
-            maxTokens: 2048,
+            maxTokens: 8192,
           })
           const parsed2 = parseReportV2(retry)
           if (validateReportV2(parsed2).length === 0) {

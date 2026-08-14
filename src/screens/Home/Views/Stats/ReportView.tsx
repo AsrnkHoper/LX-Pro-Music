@@ -4,8 +4,8 @@
  * - 生成中三态等待(策划:正在读你的数据 → 正在写你的一周 → 正在装信)
  * - 展示:StoryFlow 翻卡
  */
-import { forwardRef, memo, useCallback, useImperativeHandle, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, TouchableOpacity, View } from 'react-native'
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { ActivityIndicator, Animated, Modal, TouchableOpacity, View } from 'react-native'
 import { useWindowSize } from '@/utils/hooks'
 import { createStyle, toast } from '@/utils/tools'
 import Text from '@/components/common/Text'
@@ -29,6 +29,19 @@ export default memo(
     const [report, setReport] = useState<AiReportV2 | null>(null)
     const [generating, setGenerating] = useState(false)
     const [genStage, setGenStage] = useState(0)
+    const [waitSeconds, setWaitSeconds] = useState(0)
+    // 无限循环进度条动画
+    const barAnim = useRef(new Animated.Value(0)).current
+    useEffect(() => {
+      if (!generating) return
+      barAnim.setValue(0)
+      const loop = Animated.loop(
+        Animated.timing(barAnim, { toValue: 1, duration: 1800, useNativeDriver: false })
+      )
+      loop.start()
+      return () => loop.stop()
+    }, [generating, barAnim])
+    const barWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ['10%', '100%'] })
 
     const show = useCallback((r: AiReportV2) => {
       setReport(r)
@@ -40,14 +53,19 @@ export default memo(
       show,
     }))
 
-    /** 生成本周报告(三态等待) */
+    /** 生成本周报告(带真实进度反馈:已等待秒数 + 循环进度条 + 三态) */
     const handleGenerate = useCallback(() => {
       setGenerating(true)
       setGenStage(0)
-      // 三态:读数据(0)→ 写一周(1)→ 装信(2),各约 1.2s 轮转,直到请求完成
-      const timer = setInterval(() => {
+      setWaitSeconds(0)
+      // 三态:读数据(0)→ 写一周(1)→ 装信(2),各约 1.5s 轮转
+      const stageTimer = setInterval(() => {
         setGenStage((s) => (s + 1) % 3)
-      }, 1200)
+      }, 1500)
+      // 已等待秒数计时
+      const secTimer = setInterval(() => {
+        setWaitSeconds((s) => s + 1)
+      }, 1000)
       generateWeeklyReport()
         .then((res) => {
           if (res.ok) {
@@ -58,7 +76,8 @@ export default memo(
           }
         })
         .finally(() => {
-          clearInterval(timer)
+          clearInterval(stageTimer)
+          clearInterval(secTimer)
           setGenerating(false)
         })
     }, [visible])
@@ -79,7 +98,13 @@ export default memo(
           {generating ? (
             <View style={styles.generating}>
               <ActivityIndicator size="large" color={theme['c-primary']} />
-              <Text size={14} color={theme['c-500']} style={styles.genText}>{genTexts[genStage]}</Text>
+              <Text size={15} color={theme['c-font']} style={styles.genText}>{genTexts[genStage]}</Text>
+              <View style={styles.progressTrack}>
+                <Animated.View style={[styles.progressBar, { width: barWidth, backgroundColor: theme['c-primary'] }]} />
+              </View>
+              <Text size={12} color={theme['c-500']} style={styles.genWait}>
+                已等待 {waitSeconds} 秒,AI 正在分析你的听歌数据…
+              </Text>
             </View>
           ) : report ? (
             <StoryFlow report={report} />
@@ -127,6 +152,21 @@ const styles = createStyle({
   },
   genText: {
     marginTop: 16,
+    marginBottom: 24,
+  },
+  progressTrack: {
+    width: '70%',
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(128,128,128,0.2)',
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: 6,
+    borderRadius: 3,
+  },
+  genWait: {
+    marginTop: 12,
   },
   empty: {
     flex: 1,

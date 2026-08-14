@@ -129,7 +129,7 @@ export interface ChatCompletionParams {
 export const chatCompletion = async (params: ChatCompletionParams): Promise<string> => {
   const { apiKey, model, system, user } = params
   const capability = params.capability ?? 'none'
-  const maxTokens = params.maxTokens ?? 2048
+  const maxTokens = params.maxTokens ?? 8192
   const timeoutMs = params.timeoutMs ?? 120000
   if (!params.endpoint.trim()) throw new Error('请先填写 Endpoint')
   if (!model.trim()) throw new Error('请先填写模型名称')
