@@ -1,10 +1,86 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { ScrollView, TouchableOpacity, View } from 'react-native'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Animated, ScrollView, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import { getStatsDailyByRange } from '@/core/player/stats'
 import { formatDuration, getHeatColor, getMonthDays, getTodayText, WEEK_LABELS } from './utils'
+
+/** 单个月份卡片(带入场动画:淡入 + 上移) */
+const MonthCard = memo((props: {
+  monthName: string
+  monthDate: Date
+  dayDurations: Map<string, number>
+  maxDayDuration: number
+  todayText: string
+  visible: boolean
+}) => {
+  const theme = useTheme()
+  const { monthName, monthDate, dayDurations, maxDayDuration, todayText, visible } = props
+  const anim = useRef(new Animated.Value(0)).current
+
+  // 该月可见时播放:opacity 0→1, translateY 12→0
+  useEffect(() => {
+    if (!visible) return
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start()
+  }, [visible, anim])
+
+  const monthDays = useMemo(() => getMonthDays(monthDate), [monthDate])
+
+  return (
+    <Animated.View
+      style={[
+        styles.monthCard,
+        {
+          opacity: anim,
+          transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+        },
+      ]}
+    >
+      <Text size={13} color={theme['c-font']} style={styles.monthCardTitle}>{monthName}</Text>
+      <View style={styles.monthWeekRow}>
+        {WEEK_LABELS.map(day => (
+          <Text key={day} size={9} color={theme['c-500']} style={styles.monthWeekText}>{day}</Text>
+        ))}
+      </View>
+      <View style={styles.monthGrid}>
+        {monthDays.map(({ dateText, isCurrentMonth }) => {
+          const duration = dayDurations.get(dateText) ?? 0
+          const isToday = dateText === todayText
+          return (
+            <View
+              key={dateText}
+              style={{
+                ...styles.yearDayCell,
+                backgroundColor: isCurrentMonth ? getHeatColor(duration, maxDayDuration) : 'transparent',
+              }}
+            >
+              <Text
+                size={9}
+                color={
+                  !isCurrentMonth
+                    ? theme['c-300']
+                    : isToday
+                      ? theme['c-primary']
+                      : duration > 0
+                        ? theme['c-font']
+                        : theme['c-500']
+                }
+                style={isToday ? styles.todayText : undefined}
+              >
+                {dateText.slice(8, 10).replace(/^0/, '')}
+              </Text>
+            </View>
+          )
+        })}
+      </View>
+    </Animated.View>
+  )
+})
 
 /**
  * 年度总览
@@ -44,7 +120,7 @@ const YearOverview = memo(() => {
     if (isVisible) loadYear()
   }, [isVisible, loadYear])
 
-  // 切到热力图视图时,分帧逐月渲染(每 50ms 多显示 2 个月),避免一次性 504 格卡顿
+  // 切到热力图视图时,分帧逐月渲染(每 120ms 显示 1 个月,配合 MonthCard 入场动画,平滑逐月浮现)
   useEffect(() => {
     if (viewMode !== 'heat') return
     setVisibleMonths(0)
@@ -54,9 +130,9 @@ const YearOverview = memo(() => {
           clearInterval(timer)
           return 12
         }
-        return prev + 2
+        return prev + 1
       })
-    }, 50)
+    }, 120)
     return () => clearInterval(timer)
   }, [viewMode, isVisible])
 
@@ -144,49 +220,18 @@ const YearOverview = memo(() => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.yearGrid}>
             {monthDates.map((monthDate, index) => {
-              // 分批渲染:只渲染 visibleMonths 之前的部分,避免一次性 504 格卡顿
+              // 分批渲染 + 平滑入场动画:只渲染 visibleMonths 之前的部分
               if (index >= visibleMonths) return null
-              const monthDays = getMonthDays(monthDate)
               return (
-                <View key={monthNames[index]} style={styles.monthCard}>
-                  <Text size={13} color={theme['c-font']} style={styles.monthCardTitle}>{monthNames[index]}</Text>
-                  <View style={styles.monthWeekRow}>
-                    {WEEK_LABELS.map(day => (
-                      <Text key={day} size={9} color={theme['c-500']} style={styles.monthWeekText}>{day}</Text>
-                    ))}
-                  </View>
-                  <View style={styles.monthGrid}>
-                    {monthDays.map(({ dateText, isCurrentMonth }) => {
-                      const duration = dayDurations.get(dateText) ?? 0
-                      const isToday = dateText === todayText
-                      return (
-                        <View
-                          key={dateText}
-                          style={{
-                            ...styles.yearDayCell,
-                            backgroundColor: isCurrentMonth ? getHeatColor(duration, maxDayDuration) : 'transparent',
-                          }}
-                        >
-                          <Text
-                            size={9}
-                            color={
-                              !isCurrentMonth
-                                ? theme['c-300']
-                                : isToday
-                                  ? theme['c-primary']
-                                  : duration > 0
-                                    ? theme['c-font']
-                                    : theme['c-500']
-                            }
-                            style={isToday ? styles.todayText : undefined}
-                          >
-                            {dateText.slice(8, 10).replace(/^0/, '')}
-                          </Text>
-                        </View>
-                      )
-                    })}
-                  </View>
-                </View>
+                <MonthCard
+                  key={monthNames[index]}
+                  monthName={monthNames[index]}
+                  monthDate={monthDate}
+                  dayDurations={dayDurations}
+                  maxDayDuration={maxDayDuration}
+                  todayText={todayText}
+                  visible
+                />
               )
             })}
           </View>
