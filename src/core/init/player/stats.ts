@@ -3,7 +3,7 @@ import { AppState } from 'react-native'
 import playerState from '@/store/player/state'
 import { addStatsRecordQueued, backfillStatsFromHistory } from '@/core/player/stats'
 import { isOneDriveMusicInfo } from '@/core/oneDrive/utils'
-import { getPosition } from '@/plugins/player'
+import { getPosition, getDuration } from '@/plugins/player'
 
 /**
  * 本地听歌统计 —— 埋点/结算层
@@ -48,13 +48,24 @@ const settleSession = () => {
   currentSession = null
   if (session.accumulatedTime <= 0) return
 
-  void addStatsRecordQueued({
-    musicInfo: session.musicInfo,
-    playedAt: session.playedAt,
-    playTime: session.accumulatedTime,
-    maxTime: session.maxTime,
-    isEffective: session.isEffective,
-  })
+  // maxTime 可能在 musicToggled 时还没就绪(getDuration 异步),结算时补取
+  const finalize = (maxTime = session.maxTime) => {
+    void addStatsRecordQueued({
+      musicInfo: session.musicInfo,
+      playedAt: session.playedAt,
+      playTime: session.accumulatedTime,
+      maxTime,
+      isEffective: session.isEffective,
+    })
+  }
+
+  if (session.maxTime > 0) {
+    finalize()
+    return
+  }
+  void getDuration().then((duration) => {
+    finalize(duration && duration > 0 ? duration : 0)
+  }).catch(() => finalize())
 }
 
 const createSession = (musicInfo: LX.Music.MusicInfo) => {
