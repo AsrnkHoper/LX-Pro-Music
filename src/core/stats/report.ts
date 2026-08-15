@@ -321,7 +321,7 @@ export const generateWeeklyReport = async (force = false): Promise<GenerateRepor
       user: userData,
       capability,
       maxTokens: 8192,
-      timeoutMs: 120000,
+      timeoutMs: 240000,
     })
 
     // 第二层:校验 + 重试(最多 1 次重试,每次都重新校验返回值)
@@ -354,7 +354,7 @@ export const generateWeeklyReport = async (force = false): Promise<GenerateRepor
         user: userData,
         capability,
         maxTokens: 8192,
-        timeoutMs: 120000,
+        timeoutMs: 240000,
       })
       const second = tryParse(retryRaw)
       if (second.report) {
