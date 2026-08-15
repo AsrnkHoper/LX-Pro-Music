@@ -159,7 +159,7 @@ export default memo(
               ) : (
                 archive.map((item) => (
                   <TouchableOpacity
-                    key={`${item.period.start}_${item.generatedAt}`}
+                    key={item.id || `${item.period.start}_${item.generatedAt}`}
                     style={[styles.archiveItem, { borderBottomColor: theme['c-border-background'] }]}
                     onPress={() => {
                       setReport(item.report)
@@ -170,6 +170,7 @@ export default memo(
                       <Text size={15} color={theme['c-font']}>{item.report.identity?.period_name || `${item.period.start} ~ ${item.period.end}`}</Text>
                       <Text size={12} color={theme['c-500']} style={styles.archiveSub}>
                         {item.period.start} ~ {item.period.end}
+                        {item.generatedAt ? ` · ${new Date(item.generatedAt).toLocaleDateString()} ${new Date(item.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
                       </Text>
                     </View>
                     <Text size={12} color={theme['c-500']}>

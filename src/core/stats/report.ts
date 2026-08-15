@@ -225,13 +225,14 @@ export const readCachedReport = async (): Promise<AiReportV2 | null> => {
 
 /** 报告档案馆条目 */
 export interface ArchiveItem {
+  /** 唯一 ID(生成时间戳) */
+  id: string
   /** 周期(YYYY-MM-DD 起止) */
   period: { start: string; end: string }
   report: AiReportV2
   /** 生成时间戳 */
   generatedAt: number
 }
-
 const archiveKey = storageDataPrefix.statsReportArchive
 
 /** 读全部历史报告(按生成时间倒序) */
@@ -241,11 +242,12 @@ export const getReportArchive = async (): Promise<ArchiveItem[]> => {
   return [...list].sort((a, b) => b.generatedAt - a.generatedAt)
 }
 
-/** 追加一份报告到档案馆(同周期覆盖旧份,最多留 30 份) */
+/** 追加一份报告到档案馆(每次生成都保留,不覆盖,最多留 30 份) */
 export const addReportToArchive = async (report: AiReportV2): Promise<void> => {
   const list = await getReportArchive()
-  const item: ArchiveItem = { period: report.period, report, generatedAt: Date.now() }
-  const filtered = list.filter((it) => it.period.start !== report.period.start || it.period.end !== report.period.end)
+  const now = Date.now()
+  const item: ArchiveItem = { id: String(now), period: report.period, report, generatedAt: now }
+  const filtered = list.filter((it) => it.id !== item.id)
   filtered.unshift(item)
   await saveData(archiveKey, filtered.slice(0, 30))
 }
