@@ -189,6 +189,9 @@ export const buildAiSystemForReport = (): string => {
     '{',
     '  "schema_version": 2,',
     '  "period": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"},',
+    '  "overview": {"total_plays": 123, "total_duration_min": 456, "active_days": 7, "top_song": {"name": "歌名", "singer": "歌手", "plays": 10}, "top_artist": {"name": "歌手名", "plays": 20}},',
+    '  "time": {"session_stats": {"session_count": 10, "avg_min": 30, "longest_min": 120}, "late_night_ratio": 0.3, "snooze_guess": "作息推断文案"},',
+    '  "taste": {"repeat_obsession": {"name": "歌名", "singer": "歌手", "plays": 5}, "new_discoveries": [{"name": "新歌名", "singer": "新歌手", "first_heard": "YYYY-MM-DD"}]},',
     '  "identity": {"period_name": "周期名字", "persona_tags": ["标签1","标签2"], "color_note": "一句话"},',
     '  "compare": {"genre_shift_summary": "口味迁移一句话", "revisit_note": "长期记忆回链"},',
     '  "insights": [{"text": "观点", "data_basis": "数据依据"}],',
@@ -196,7 +199,8 @@ export const buildAiSystemForReport = (): string => {
     '  "poster": {"headline": "海报标题", "ai_copy": "海报文案", "highlight": "亮点"}',
     '}',
     `写作角度:${angle}`,
-    '字段说明:identity.period_name 给周期起名;persona_tags 2-3个标签;compare.genre_shift_summary 口味迁移;',
+    '字段说明:overview.time.taste 是必填字段(必须包含),数字必须是 number 类型不是字符串;',
+    'identity.period_name 给周期起名;persona_tags 2-3个标签;compare.genre_shift_summary 口味迁移;',
     'stories 每段<150字且必须基于给定数据;insights 附 data_basis 数据依据;所有数字/歌名只能来自给定数据,一个都不能编。',
   ].join('\n')
   return `${base}\n\n${schemaReq}`
@@ -315,47 +319,54 @@ export const generateWeeklyReport = async (force = false): Promise<GenerateRepor
       user: userData,
       capability,
       maxTokens: 8192,
-      timeoutMs: 240000,
+      timeoutMs: 120000,
     })
 
-    // 第二层:校验 + 重试(最多 2 次)
+    // 第二层:校验 + 重试(最多 1 次重试,每次都重新校验返回值)
     let report: AiReportV2 | null = null
-    for (let attempt = 0; attempt < 2; attempt++) {
+    let lastError = ''
+    const tryParse = (respText: string): { report?: AiReportV2; missing: string[] } => {
       try {
-        const parsed = parseReportV2(raw)
+        const parsed = parseReportV2(respText)
         const missing = validateReportV2(parsed)
-        if (missing.length === 0) {
-          report = finalizeReport(parsed, facts, period)
-          break
-        }
-        if (attempt === 0) {
-          const retry = await chatCompletion({
-            endpoint: config.endpoint,
-            apiKey: config.apiKey,
-            model: config.model,
-            system: `${system}\n注意:上次返回缺少 ${missing.join(', ')},请补全后重新输出完整 JSON。`,
-            user: userData,
-            capability,
-            maxTokens: 8192,
-      timeoutMs: 240000,
-          })
-          const parsed2 = parseReportV2(retry)
-          if (validateReportV2(parsed2).length === 0) {
-            report = finalizeReport(parsed2, facts, period)
-            break
-          }
-        }
-      } catch {
-        // 解析失败,重试
+        if (missing.length === 0) return { report: finalizeReport(parsed, facts, period), missing: [] }
+        return { missing }
+      } catch (err: any) {
+        lastError = err?.message ?? String(err)
+        return { missing: [] }
       }
     }
-
-    if (!report) {
-      // AI 请求失败/校验不过 → 返回失败,不静默兜底、不入缓存
-      // (琥珀反馈:兜底报告只有本地数据、没人情味,且会污染缓存/档案馆)
-      return { ok: false, error: 'AI 生成失败,请稍后重试' }
+    // 第一次解析
+    const first = tryParse(raw)
+    if (first.report) {
+      report = first.report
+    } else if (first.missing.length > 0) {
+      lastError = `字段缺失:${first.missing.join(', ')}`
+      // 重试一次,告诉 AI 缺了什么字段
+      const retryRaw = await chatCompletion({
+        endpoint: config.endpoint,
+        apiKey: config.apiKey,
+        model: config.model,
+        system: `${system}
+注意:上次返回缺少这些必填字段:${first.missing.join(', ')},请补全后重新输出完整 JSON。overview.time.taste 及其内部必填字段必须全部包含。`,
+        user: userData,
+        capability,
+        maxTokens: 8192,
+        timeoutMs: 120000,
+      })
+      const second = tryParse(retryRaw)
+      if (second.report) {
+        report = second.report
+      } else if (second.missing.length > 0) {
+        lastError = `字段缺失:${second.missing.join(', ')}`
+      }
+    } else if (!lastError) {
+      lastError = 'JSON 解析失败'
     }
-
+    if (!report) {
+      // 透出真实错误(缺失字段/超时/JSON 解析失败),方便排查
+      return { ok: false, error: `AI 生成失败:${lastError || '未知原因'}` }
+    }
     // 仅当报告包含 AI 原创字段时才算成功,否则重试也失败
     const hasAiFields = report.identity || report.stories || report.poster || report.insights?.length
     if (!hasAiFields) {
