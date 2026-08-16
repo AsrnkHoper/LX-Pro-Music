@@ -35,13 +35,13 @@ export interface StoryCard {
   kind?: 'cover' | 'numbers' | 'time' | 'taste' | 'genre' | 'annual' | 'keywords' | 'poster'
 }
 
-/** 由 AiReportV2 组装卡片列表(含降级) */
+/** 由 AiReportV2 组装卡片列表(v3:封面固定 + AI 自选 cards 数组 + 海报固定) */
 export const buildCards = (report: AiReportV2): StoryCard[] => {
   const cards: StoryCard[] = []
-  const { overview, time, taste, identity, compare, stories, poster } = report
+  const { overview, identity, poster } = report
   const periodLabel = report.period.start.slice(0, 7).replace('-', '.')
 
-  // 封面卡(永在)
+  // 封面卡(固定,永在)
   const coverColor = identity?.color?.hex || '#2E3A5C'
   cards.push({
     kind: 'cover',
@@ -49,101 +49,24 @@ export const buildCards = (report: AiReportV2): StoryCard[] => {
     title: identity?.period_name || `我的${periodLabel}听歌报告`,
     body: [`${report.period.start} — ${report.period.end}`, 'LX Music 写给你的信'],
     bgColor: coverColor,
-    letter: stories?.cover,
   })
 
-  // 大数字卡(永在)
-  const playsDelta = compare?.plays_delta_pct
-  const durationDelta = compare?.duration_delta_pct
-  cards.push({
-    kind: 'numbers',
-    label: '02 · 你的数字',
-    title: '这个周期,你听了',
-    body: [
-      `${overview.total_plays} 次播放`,
-      `${overview.total_duration_min} 分钟`,
-      `${overview.active_days} 天活跃`,
-    ],
-    note:
-      playsDelta != null
-        ? `次数${playsDelta >= 0 ? '多' : '少'}了${Math.abs(playsDelta)}%${durationDelta != null ? `,时长${durationDelta >= 0 ? '多' : '少'}了${Math.abs(durationDelta)}%` : ''}`
-        : undefined,
-    letter: stories?.numbers,
-  })
-
-  // 深夜卡(永在)
-  const lateRatio = typeof time.late_night_ratio === 'number' ? Math.round(time.late_night_ratio * 100) : null
-  cards.push({
-    kind: 'time',
-    label: '03 · 深夜高墙',
-    title: '深夜高墙',
-    body: [
-      lateRatio != null ? `${lateRatio}% 的播放发生在 23 点之后` : '深夜时段数据不足',
-      time.session_stats ? `最长连续 ${time.session_stats.longest_min} 分钟` : '',
-    ],
-    note: time.snooze_guess,
-    letter: stories?.time,
-  })
-
-  // 循环之王卡(永在)
-  const obsession = taste.repeat_obsession
-  const discoveries = taste.new_discoveries
-  cards.push({
-    kind: 'taste',
-    label: '04 · 口味',
-    title: '你反复听',
-    body: obsession
-      ? [`《${obsession.name}》`, `${obsession.plays} 次${obsession.days ? ` · ${obsession.days} 天` : ''}`]
-      : ['循环数据不足'],
-    note:
-      discoveries && discoveries.length > 0
-        ? `这个周期,你新认识了 ${discoveries.length} 首歌`
-        : undefined,
-    letter: stories?.taste,
-  })
-
-  // 口味变迁卡(季度/年度才有;无对比数据跳过)
-  const genreShift = taste.genre_shift
-  if (genreShift?.top_genres?.length) {
+  // 动态卡(AI 从卡型菜单自选,2026-08-16 v3)
+  const dynamic = report.cards ?? []
+  dynamic.forEach((c, i) => {
     cards.push({
-      kind: 'genre',
-      label: '05 · 口味变迁',
-      title: '口味在变',
-      body: [genreShift.top_genres.slice(0, 3).join(' · ')],
-      note: genreShift.shift_note || compare?.genre_shift_summary,
-      letter: stories?.genre_shift,
+      kind: c.card_key === 'surprise' ? 'taste' : 'time',
+      label: `${String(i + 2).padStart(2, '0')} · ${c.card_key}`,
+      title: c.title || '这周的故事',
+      body: c.body ? [c.body] : [],
+      note: c.data_basis,
     })
-  }
+  })
 
-  // 年度之最卡(年度)
-  if (poster?.highlight) {
-    cards.push({
-      kind: 'annual',
-      label: '06 · 年度之最',
-      title: '年度之最',
-      body: [poster.highlight],
-      letter: stories?.annual_top,
-    })
-  }
-
-  // 关键词卡(年度)
-  const tags = identity?.persona_tags
-  const revisit = compare?.revisit_note
-  if (tags?.length || revisit) {
-    cards.push({
-      kind: 'keywords',
-      label: '07 · 关键词',
-      title: '你的年度关键词',
-      body: tags?.length ? [tags.join(' · ')] : [],
-      note: revisit,
-      letter: stories?.keywords,
-    })
-  }
-
-  // 海报卡(永在,末卡)
+  // 海报卡(固定,末卡)
   cards.push({
     kind: 'poster',
-    label: '08 · 保存',
+    label: '末卡 · 保存',
     title: poster?.headline || `我的${periodLabel}听歌报告`,
     body: [
       `${overview.total_plays}次 · ${overview.total_duration_min}分钟 · ${overview.active_days}天`,
@@ -151,7 +74,6 @@ export const buildCards = (report: AiReportV2): StoryCard[] => {
       ...(poster?.highlight ? [poster.highlight] : []),
     ],
     bgColor: coverColor,
-    letter: stories?.poster,
   })
 
   return cards

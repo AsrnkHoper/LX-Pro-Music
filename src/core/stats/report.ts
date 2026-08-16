@@ -175,33 +175,42 @@ export const buildAiPromptBody = (
 export const buildAiSystemForReport = (): string => {
   const config = getAiConfig()
   const base = buildAiSystemPrompt(config)
-  // 随机切入角度(2026-08-14 琥珀拍板:每次生成换角度,事实不变,解决"随机性低")
-  const angles = [
-    '这次从「深夜与独处」的角度切入,突出深夜聆听的故事感',
-    '这次从「循环与执念」的角度切入,讲你反复听一首歌背后的情绪',
-    '这次从「口味变化」的角度切入,讲你这周在音乐上的探索与回归',
-    '这次从「数据里的温度」角度切入,把次数/时长翻译成生活场景',
-    '这次从「新朋友」角度切入,讲你新发现的歌和歌手',
-  ]
-  const angle = angles[Math.floor(Math.random() * angles.length)]
   const schemaReq = [
-    '按以下 JSON schema 返回(不要 Markdown 代码块,直接 JSON):',
+    '你是听歌报告作家。用户有固定的"封面卡"和"海报卡"(由 App 渲染,你只负责填写字段),你的核心任务:',
+    '1. 从下面的卡型菜单里,挑出本周期最有故事性的 3-6 张卡,写进 cards 数组',
+    '2. 每张卡:card_key(菜单里的 key)、title(AI 自由起名,要有惊喜感,像懂 TA 的朋友说的话)、body(2-3 句,基于数据)、data_basis(数据依据,证明不是编的)',
+    '3. 如果数据里有特别意外的点(某首歌深夜突然回归/某天爆听/被低估的歌手等),可写 1 张 card_key="surprise" 的自由惊喜卡(同样要有 data_basis);没有惊喜点就不写',
+    '4. 不要写满所有卡型,只挑真正有故事性的',
+    '',
+    '卡型菜单(挑 3-6 张):',
+    '- deep_night 深夜高墙:深夜播放占比高',
+    '- loop_king 循环之王:某首歌反复播放',
+    '- taste_shift 口味变迁:口味变化',
+    '- hidden_gem 冷门宝藏:播放少但时长长的歌',
+    '- nostalgia 怀旧回响:很久没听的歌突然回归',
+    '- new_frontier 新大陆:新歌手/新歌占比高',
+    '- emotion_ride 情绪过山车:单日播放波动大',
+    '- early_bird 早鸟:清晨 5-8 点播放多',
+    '- upset 爆冷逆袭:某首歌从低到高',
+    '- underrated 被低估的歌手:歌手播放高但不在 top',
+    '- disconnect 断联回归:上一周期 top 歌本周期消失',
+    '- brainworm 单曲洗脑:同首歌连续多天',
+    '- focus_moment 专注时刻:单次连续播放长',
+    '- empty_day 空窗日:某天 0 播放',
+    '- fragments 碎片时间:平均播放时长极短',
+    '- night_whisper 深夜私语:深夜听小众歌',
+    '- outside_playlist 歌单之外:自己找到的歌',
+    '- new_king 年度新王:新歌迅速登顶',
+    '',
+    '按这个 JSON 返回(不要 Markdown 代码块,直接 JSON):',
     '{',
     '  "schema_version": 2,',
     '  "period": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"},',
-    '  "overview": {"total_plays": 123, "total_duration_min": 456, "active_days": 7, "top_song": {"name": "歌名", "singer": "歌手", "plays": 10}, "top_artist": {"name": "歌手名", "plays": 20}},',
-    '  "time": {"session_stats": {"session_count": 10, "avg_min": 30, "longest_min": 120}, "late_night_ratio": 0.3, "snooze_guess": "作息推断文案"},',
-    '  "taste": {"repeat_obsession": {"name": "歌名", "singer": "歌手", "plays": 5}, "new_discoveries": [{"name": "新歌名", "singer": "新歌手", "first_heard": "YYYY-MM-DD"}]},',
-    '  "identity": {"period_name": "周期名字", "persona_tags": ["标签1","标签2"], "color_note": "一句话"},',
-    '  "compare": {"genre_shift_summary": "口味迁移一句话", "revisit_note": "长期记忆回链"},',
-    '  "insights": [{"text": "观点", "data_basis": "数据依据"}],',
-    '  "stories": {"cover": "封面卡长文(<150字)", "numbers": "数据卡长文", "time": "时间卡长文", "taste": "口味卡长文"},',
+    '  "identity": {"period_name": "给这个周期起个有诗意的名字", "persona_tags": ["标签1","标签2"], "color_note": "一句话"},',
+    '  "cards": [{"card_key": "deep_night", "title": "AI 自由起标题", "body": "2-3句话", "data_basis": "数据依据"}],',
     '  "poster": {"headline": "海报标题", "ai_copy": "海报文案", "highlight": "亮点"}',
     '}',
-    `写作角度:${angle}`,
-    '字段说明:overview.time.taste 是必填字段(必须包含),数字必须是 number 类型不是字符串;',
-    'identity.period_name 给周期起名;persona_tags 2-3个标签;compare.genre_shift_summary 口味迁移;',
-    'stories 每段<150字且必须基于给定数据;insights 附 data_basis 数据依据;所有数字/歌名只能来自给定数据,一个都不能编。',
+    'identity.period_name 给周期起名;poster 给海报写文案;cards 至少 1 张;所有数字/歌名只能来自给定数据,一个都不能编。',
   ].join('\n')
   return `${base}\n\n${schemaReq}`
 }
@@ -283,6 +292,7 @@ export const finalizeReport = (raw: unknown, facts: PeriodFacts, period: { start
     insights: report.insights,
     stories: report.stories,
     poster: report.poster,
+    cards: report.cards,
   }
   return result
 }
@@ -370,7 +380,7 @@ export const generateWeeklyReport = async (force = false): Promise<GenerateRepor
       return { ok: false, error: `AI 生成失败:${lastError || '未知原因'}` }
     }
     // 仅当报告包含 AI 原创字段时才算成功,否则重试也失败
-    const hasAiFields = report.identity || report.stories || report.poster || report.insights?.length
+    const hasAiFields = report.identity || report.cards?.length || report.poster || report.insights?.length
     if (!hasAiFields) {
       return { ok: false, error: 'AI 返回缺少文案字段,请重试' }
     }

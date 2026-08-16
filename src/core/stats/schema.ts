@@ -107,6 +107,18 @@ export interface Poster {
   keywords?: string[]
 }
 
+/** 动态卡(AI 从卡型菜单自选,2026-08-16 琥珀拍板 v3) */
+export interface ReportCard {
+  /** 卡型 key(见 CARD_MENU,或 'surprise' 自由惊喜卡) */
+  card_key: string
+  /** AI 自由起标题(有惊喜感) */
+  title: string
+  /** 正文 2-3 句,基于数据 */
+  body: string
+  /** 数据依据(证明没编,必填) */
+  data_basis: string
+}
+
 /** schema v2 完整报告结构 */
 export interface AiReportV2 {
   schema_version: 2
@@ -122,6 +134,8 @@ export interface AiReportV2 {
   insights?: Insight[]
   stories?: Stories
   poster?: Poster
+  /** 动态卡数组(AI 自选,2026-08-16 v3) */
+  cards?: ReportCard[]
 }
 
 /** 校验必填白名单(本地补算字段 = 事实层,必须存在;AI 原创字段缺失走降级不阻断) */
