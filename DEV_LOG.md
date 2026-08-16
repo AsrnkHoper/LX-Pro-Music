@@ -166,6 +166,6 @@ src/
 1. 动态卡中文化：StoryFlow 内置 19 项卡型元数据（中文名 + emoji + 配色 + 一句解读），`deep_night` 显示为「🌙 深夜高墙」，`surprise` 显示为「✨ 惊喜卡」；代码标识符不变
 2. 点卡详情：封面卡/动态卡/海报卡均生成 `letter`，点按卡面上滑查看详情（AI 文案 + 数据依据 + 周期）
 3. 海报卡：新增「保存到相册」（`react-native-view-shot` 截图 + `saveLocalImageToPictures` 写入 Pictures/LX-N-Music）和「重新生成文案」（确认弹窗 + 回调 ReportView 重新生成）
-4. 新增依赖：`react-native-view-shot@4.0.0`
+4. 新增依赖：`react-native-view-shot@3.8.0`（4.0.0 首次 CI 编译失败：Java 引用 Fabric UIBlock 不兼容 RN 0.73，已回退 3.8.0）
 
 **验证**：`npx tsc --noEmit` 基线 252 条存量错误，修复后 252 条，零新增错误
