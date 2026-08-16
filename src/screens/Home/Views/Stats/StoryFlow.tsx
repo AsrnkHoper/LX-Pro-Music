@@ -4,12 +4,12 @@
  * 依据:故事流卡片线框图.md(逐卡规格)/ 策划设计.md 第十二节功能块③
  * - 横向翻卡(pagingEnabled,一卡一屏)+ 底部圆点进度
  * - 点卡 → 长文/详情从底部上滑展开(AnimatedSlideUpPanel,可滚动)
- * - v3 动态卡:AI 自选 3-6 张 + 惊喜卡;卡片展示中文卡名/emoji/配色
- * - 海报卡:末卡,可保存到相册 + 重新生成文案
+ * - v3 动态卡:AI 自选 3-6 张 + 惊喜卡;每卡一个主色,大标题当主角
+ * - 海报卡:独立 3:4 海报版式,可保存到相册 + 重新生成文案
  * - 降级:某层数据缺失 → 跳过对应卡;封面+海报永在;海报缺 AI 文案退化为纯数字版
  */
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
-import { FlatList, TouchableOpacity, View, type ListRenderItemInfo } from 'react-native'
+import { FlatList, ScrollView, TouchableOpacity, View, type ListRenderItemInfo } from 'react-native'
 import ViewShot, { captureRef } from 'react-native-view-shot'
 import { useWindowSize } from '@/utils/hooks'
 import { createStyle, toast } from '@/utils/tools'
@@ -93,6 +93,15 @@ const buildPosterLetter = (report: AiReportV2): string => {
   return `${poster?.headline || `我的${periodLabelOf(report)}听歌报告`}\n\n${poster?.ai_copy || '这一周的听歌故事,都在数字里。'}\n\n${poster?.highlight || ''}\n\n${overview.total_plays} 次播放 · ${Math.round(overview.total_duration_min)} 分钟 · 活跃 ${overview.active_days} 天\n\n—— ${report.period.start} ~ ${report.period.end}`
 }
 
+const hexToRgba = (hex: string, alpha: number): string => {
+  const h = hex.replace('#', '')
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  const r = parseInt(full.slice(0, 2), 16)
+  const g = parseInt(full.slice(2, 4), 16)
+  const b = parseInt(full.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 /** 由 AiReportV2 组装卡片列表(v3:封面固定 + AI 自选 cards 数组 + 海报固定) */
 export const buildCards = (report: AiReportV2): StoryCard[] => {
   const cards: StoryCard[] = []
@@ -107,6 +116,8 @@ export const buildCards = (report: AiReportV2): StoryCard[] => {
     title: identity?.period_name || `我的${periodLabel}听歌报告`,
     body: [`${report.period.start} — ${report.period.end}`, 'LX Music 写给你的信'],
     bgColor: coverColor,
+    tag: '👋 封面',
+    tagColor: 'rgba(255,255,255,0.32)',
     letter: buildCoverLetter(report),
   })
 
@@ -138,17 +149,65 @@ export const buildCards = (report: AiReportV2): StoryCard[] => {
     ],
     bgColor: coverColor,
     tag: '🖼️ 海报',
-    tagColor: 'rgba(255,255,255,0.28)',
+    tagColor: 'rgba(255,255,255,0.32)',
     letter: buildPosterLetter(report),
   })
 
   return cards
 }
 
+/** 独立 3:4 海报版式(保存到相册的就是它,不是卡片截图) */
+const PosterVisual = memo(({ report, width, color }: { report: AiReportV2; width: number; color: string }) => {
+  const { overview, poster, identity } = report
+  return (
+    <View style={[styles.posterVisual, { width, backgroundColor: color }]}>
+      <View pointerEvents="none" style={[styles.posterDecor, { backgroundColor: hexToRgba(color === '#2E3A5C' ? '#FFFFFF' : color, 0.14) }]} />
+      <View style={styles.posterTop}>
+        <Text size={12} color="rgba(255,255,255,0.8)">LX MUSIC · 听歌报告</Text>
+        <Text size={12} color="rgba(255,255,255,0.8)">{report.period.start} ~ {report.period.end}</Text>
+      </View>
+      <View style={styles.posterMain}>
+        <Text size={30} color="#FFFFFF" style={styles.posterHeadline}>
+          {poster?.headline || `我的${periodLabelOf(report)}听歌报告`}
+        </Text>
+        <View style={styles.posterNumbers}>
+          <View style={styles.posterNumberItem}>
+            <Text size={24} color="#FFFFFF">{overview.total_plays}</Text>
+            <Text size={11} color="rgba(255,255,255,0.75)">次播放</Text>
+          </View>
+          <View style={styles.posterNumberItem}>
+            <Text size={24} color="#FFFFFF">{Math.round(overview.total_duration_min)}</Text>
+            <Text size={11} color="rgba(255,255,255,0.75)">分钟</Text>
+          </View>
+          <View style={styles.posterNumberItem}>
+            <Text size={24} color="#FFFFFF">{overview.active_days}</Text>
+            <Text size={11} color="rgba(255,255,255,0.75)">活跃天</Text>
+          </View>
+        </View>
+        {poster?.ai_copy ? (
+          <Text size={15} color="rgba(255,255,255,0.95)" style={styles.posterCopy}>
+            {poster.ai_copy}
+          </Text>
+        ) : null}
+        {poster?.highlight ? (
+          <Text size={13} color="rgba(255,255,255,0.85)" style={styles.posterHighlight}>
+            {poster.highlight}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.posterBottom}>
+        <Text size={11} color="rgba(255,255,255,0.75)">
+          {identity?.period_name || '我的听歌报告'} · LX Music
+        </Text>
+      </View>
+    </View>
+  )
+})
+
 /** 故事流翻卡组件 */
 export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onRegeneratePoster?: () => void }) => {
   const theme = useTheme()
-  const { width: windowWidth } = useWindowSize()
+  const { width: windowWidth, height: windowHeight } = useWindowSize()
   const [page, setPage] = useState(0)
   const [currentCard, setCurrentCard] = useState<StoryCard | null>(null)
   const letterRef = useRef<AnimatedSlideUpPanelType>(null)
@@ -156,6 +215,10 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
   const regenConfirmRef = useRef<ConfirmAlertType>(null)
 
   const cards = useMemo(() => buildCards(report), [report])
+  const posterWidth = useMemo(
+    () => Math.min(windowWidth - 48, Math.round(windowHeight * 0.42)),
+    [windowWidth, windowHeight]
+  )
 
   const openLetter = useCallback((card: StoryCard) => {
     if (!card.letter) return
@@ -183,6 +246,7 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
       const isDark = item.bgColor != null
       const fg = isDark ? '#FFFFFF' : theme['c-font']
       const subFg = isDark ? 'rgba(255,255,255,0.75)' : theme['c-500']
+      const bodyFg = isDark ? 'rgba(255,255,255,0.92)' : theme['c-600']
       const cardStyle = [
         styles.card,
         { width: windowWidth - 48, backgroundColor: item.bgColor || theme['c-primary-background'] },
@@ -190,6 +254,7 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
 
       const cardFace = (
         <>
+          <View pointerEvents="none" style={[styles.cardDecor, { backgroundColor: hexToRgba(item.tagColor || theme['c-primary'], 0.12) }]} />
           <View style={styles.cardTop}>
             <Text size={12} color={subFg}>
               {item.label}
@@ -200,30 +265,26 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
           </View>
           <View style={styles.cardMain}>
             {item.tag ? (
-              <View style={[styles.cardTag, { backgroundColor: item.tagColor || theme['c-primary'] }]}>
-                <Text size={11} color="#FFFFFF">
+              <View style={styles.cardTagRow}>
+                <View style={[styles.cardTagDot, { backgroundColor: item.tagColor || theme['c-primary'] }]} />
+                <Text size={12} color={item.tagColor || theme['c-primary']}>
                   {item.tag}
                 </Text>
               </View>
             ) : null}
-            <Text size={22} color={fg} style={styles.cardTitle}>
+            <Text size={item.kind === 'cover' ? 28 : 24} color={fg} style={styles.cardTitle}>
               {item.title}
             </Text>
             {item.body.map((line, i) =>
               line ? (
-                <Text
-                  key={i}
-                  size={15}
-                  color={i === 0 && item.kind !== 'cover' ? theme['c-primary'] : fg}
-                  style={styles.cardBodyLine}
-                >
+                <Text key={i} size={15} color={bodyFg} style={styles.cardBodyLine}>
                   {line}
                 </Text>
               ) : null
             )}
             {item.note ? (
-              <Text size={13} color={subFg} style={styles.cardNote}>
-                {item.note}
+              <Text size={12} color={subFg} style={styles.cardNote}>
+                数据依据:{item.note}
               </Text>
             ) : null}
           </View>
@@ -240,10 +301,10 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
           <View style={[cardStyle, styles.cardPoster]}>
             <ViewShot
               ref={posterShotRef}
-              style={[styles.posterShot, { backgroundColor: item.bgColor || theme['c-primary-background'] }]}
+              style={[styles.posterShot, { width: posterWidth, backgroundColor: item.bgColor || theme['c-primary-background'] }]}
               options={{ format: 'jpg', quality: 100 }}
             >
-              {cardFace}
+              <PosterVisual report={report} width={posterWidth} color={item.bgColor || '#2E3A5C'} />
             </ViewShot>
             <View style={styles.posterActions}>
               <TouchableOpacity style={[styles.posterBtn, { borderColor: fg }]} onPress={handleSavePoster}>
@@ -272,7 +333,7 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
         </TouchableOpacity>
       )
     },
-    [windowWidth, theme, cards.length, handleSavePoster, onRegeneratePoster, openLetter]
+    [windowWidth, posterWidth, theme, cards.length, handleSavePoster, onRegeneratePoster, openLetter, report]
   )
 
   return (
@@ -300,7 +361,7 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
 
       {/* 详情上滑面板 */}
       <AnimatedSlideUpPanel ref={letterRef}>
-        <View style={styles.letterPanel}>
+        <ScrollView style={[styles.letterPanel, { backgroundColor: theme['c-primary-background'] }]} contentContainerStyle={styles.letterPanelContent}>
           <TouchableOpacity onPress={() => letterRef.current?.setVisible(false)}>
             <Text size={14} color={theme['c-primary']}>
               ← 返回卡片
@@ -309,10 +370,10 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
           <Text size={18} color={theme['c-font']} style={styles.letterTitle}>
             {currentCard?.title}
           </Text>
-          <Text size={14} color={theme['c-font']} style={styles.letterBody}>
+          <Text size={14} color={theme['c-600']} style={styles.letterBody}>
             {currentCard?.letter}
           </Text>
-        </View>
+        </ScrollView>
       </AnimatedSlideUpPanel>
 
       {/* 重新生成文案确认弹窗 */}
@@ -344,20 +405,77 @@ const styles = createStyle({
     borderRadius: 16,
     padding: 20,
     justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  cardDecor: {
+    position: 'absolute',
+    top: -48,
+    right: -48,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
   },
   cardPoster: {
     padding: 0,
-    overflow: 'hidden',
+    justifyContent: 'center',
   },
   posterShot: {
-    flex: 1,
+    alignSelf: 'center',
+    aspectRatio: 3 / 4,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  posterVisual: {
+    aspectRatio: 3 / 4,
+    borderRadius: 14,
+    overflow: 'hidden',
     padding: 20,
+    justifyContent: 'space-between',
+  },
+  posterDecor: {
+    position: 'absolute',
+    top: -60,
+    right: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+  },
+  posterTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  posterMain: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  posterHeadline: {
+    fontWeight: 'bold',
+    marginBottom: 20,
+    lineHeight: 38,
+  },
+  posterNumbers: {
+    flexDirection: 'row',
+    marginBottom: 18,
+  },
+  posterNumberItem: {
+    flex: 1,
+  },
+  posterCopy: {
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+  posterHighlight: {
+    lineHeight: 20,
+  },
+  posterBottom: {
+    alignItems: 'flex-end',
   },
   posterActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
   posterBtn: {
     paddingHorizontal: 18,
@@ -373,24 +491,29 @@ const styles = createStyle({
     flex: 1,
     justifyContent: 'center',
   },
-  cardTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 8,
+  cardTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  cardTagDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
   },
   cardTitle: {
     fontWeight: 'bold',
     marginBottom: 12,
+    lineHeight: 32,
   },
   cardBodyLine: {
     marginVertical: 4,
-    fontWeight: 'bold',
+    lineHeight: 22,
   },
   cardNote: {
     marginTop: 16,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   cardHint: {
     textAlign: 'center',
@@ -413,6 +536,9 @@ const styles = createStyle({
     width: 20,
   },
   letterPanel: {
+    flex: 1,
+  },
+  letterPanelContent: {
     padding: 20,
     paddingBottom: 40,
   },
