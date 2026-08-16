@@ -113,11 +113,14 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
     if (!dateText) return
     void deleteStatsDay(dateText)
       .then(() => {
-        setHeatMap(prev => {
-          const next = new Map(prev)
-          next.delete(dateText)
-          return next
-        })
+        const nextHeatMap = new Map(heatMap)
+        nextHeatMap.delete(dateText)
+        let nextMax = 0
+        for (const duration of nextHeatMap.values()) {
+          if (duration > nextMax) nextMax = duration
+        }
+        setHeatMap(nextHeatMap)
+        setMaxMonthDuration(nextMax)
         setDayEvents([])
         toast('已删除当天统计')
         // 先关弹窗再清数据,避免「文字已空、弹窗未关」的空弹窗间隙
@@ -130,7 +133,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
         setPendingDeleteDate(null)
         toast('删除失败')
       })
-  }, [pendingDeleteDate])
+  }, [pendingDeleteDate, heatMap])
 
   return (
     <View style={styles.container}>

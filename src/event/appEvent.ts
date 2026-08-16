@@ -176,6 +176,13 @@ export class AppEvent extends Event {
     this.emit('playHistoryUpdated')
   }
 
+  /**
+   * 听歌统计写入/删除后触发(统计页实时刷新用)
+   */
+  statsUpdated() {
+    this.emit('statsUpdated')
+  }
+
   changeMenuVisible(visible: boolean) {
     this.emit('changeMenuVisible', visible)
   }

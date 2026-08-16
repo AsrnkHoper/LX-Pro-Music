@@ -126,3 +126,21 @@ src/
 
 **提交状态**：待提交
 ---
+
+### 2026-08-16 - 修复热力图色阶不重算 + 统计页不实时刷新
+
+**问题**：
+1. 删除热力图某天数据后，色阶基准（maxMonthDuration）不重算，若删掉当月最长日，其余格子颜色整体偏浅
+2. 停留在统计页时，新的播放结算/删除不会自动刷新概览与排行
+
+**根因**：
+1. `MonthHeatMap.tsx` 删除后只更新 `heatMap`，未重算 `maxMonthDuration`
+2. 统计模块写库后没有触发 UI 刷新事件，统计页只监听 `playHistoryUpdated`
+
+**修复内容**：
+1. `src/screens/Home/Views/Stats/MonthHeatMap.tsx`：删除成功后基于新 `heatMap` 重算 `maxMonthDuration`
+2. `src/event/appEvent.ts`：新增 `statsUpdated` 事件
+3. `src/core/player/stats.ts`：`addStatsRecord` / `deleteStatsDay` / `clearStats` / `backfillStatsFromHistory` 写库后触发 `statsUpdated`
+4. `src/screens/Home/Views/Stats/index.tsx`：监听 `statsUpdated`，自动刷新概览与排行
+
+**验证**：`npx tsc --noEmit` 基线 252 条存量错误，修复后 252 条，零新增错误

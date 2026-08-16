@@ -137,6 +137,7 @@ export const addStatsRecord = async (params: {
   }
 
   await saveDataMultiple([[statsDailyKey, daily], [statsSongKey, song], [statsEventsKey, events]])
+  global.app_event.statsUpdated()
 }
 
 /** 串行化写入队列,避免并发写覆盖 */
@@ -183,11 +184,13 @@ export const deleteStatsDay = async (date: string) => {
   }
 
   await saveDataMultiple([[statsDailyKey, daily], [statsSongKey, song], [statsEventsKey, events]])
+  global.app_event.statsUpdated()
 }
 
 /** 清空全部统计(设置页备用) */
 export const clearStats = async () => {
   await saveDataMultiple([[statsDailyKey, []], [statsSongKey, []], [statsEventsKey, []]])
+  global.app_event.statsUpdated()
 }
 
 /**
@@ -241,6 +244,7 @@ export const backfillStatsFromHistory = async () => {
     [statsDailyKey, Array.from(dailyMap.values())],
     [statsSongKey, Array.from(songMap.values())],
   ])
+  global.app_event.statsUpdated()
 }
 
 /** 查询:按日期范围取每日聚合 */

@@ -48,8 +48,10 @@ export default memo(() => {
       })
     }
     global.app_event.on('playHistoryUpdated', handleUpdate)
+    global.app_event.on('statsUpdated', handleUpdate)
     return () => {
       global.app_event.off('playHistoryUpdated', handleUpdate)
+      global.app_event.off('statsUpdated', handleUpdate)
     }
   }, [])
 
