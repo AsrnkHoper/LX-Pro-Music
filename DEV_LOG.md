@@ -144,3 +144,16 @@ src/
 4. `src/screens/Home/Views/Stats/index.tsx`：监听 `statsUpdated`，自动刷新概览与排行
 
 **验证**：`npx tsc --noEmit` 基线 252 条存量错误，修复后 252 条，零新增错误
+
+---
+
+### 2026-08-16 - 热力图自动刷新 + 年翻页按钮
+
+**问题**：
+1. 统计页热力图在播放结算后不自动刷新，需要手动切月刷新
+2. 月度热力图只有月翻页按钮，需要加年翻页按钮
+
+**修复内容**：
+1. `src/screens/Home/Views/Stats/MonthHeatMap.tsx`：新增 `refreshKey` state，监听 `statsUpdated` 事件后自增，触发当月热力图与选中日账本重载；月份切换新增年翻页按钮 `<<` `>>`（`changeMonthBy(-12)` / `changeMonthBy(12)`，图标 `chevron-left-2` / `chevron-right-2`，下一年超过当前月时禁用）
+
+**验证**：`npx tsc --noEmit` 基线 252 条存量错误，修复后 252 条，零新增错误

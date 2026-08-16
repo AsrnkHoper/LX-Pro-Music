@@ -43,9 +43,21 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
   const [maxMonthDuration, setMaxMonthDuration] = useState(0)
   const [dayEvents, setDayEvents] = useState<LX.Stats.EventItem[]>([])
   const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
   const deleteConfirmRef = useRef<ConfirmAlertType>(null)
 
   const monthText = toMonthText(viewMonth)
+
+  // 听歌统计写入/删除后,刷新热力图与当天账本(播放结算后无需手动切月)
+  useEffect(() => {
+    const handleStatsUpdated = () => {
+      setRefreshKey((key) => key + 1)
+    }
+    global.app_event.on('statsUpdated', handleStatsUpdated)
+    return () => {
+      global.app_event.off('statsUpdated', handleStatsUpdated)
+    }
+  }, [])
 
   // 加载当月每日聚合
   useEffect(() => {
@@ -66,7 +78,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
     return () => {
       cancelled = true
     }
-  }, [viewMonth])
+  }, [viewMonth, refreshKey])
 
   // 加载选中当天账本
   useEffect(() => {
@@ -78,7 +90,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
     return () => {
       cancelled = true
     }
-  }, [selectedDate, heatMap])
+  }, [selectedDate, heatMap, refreshKey])
 
   const changeMonthBy = useCallback((offset: number) => {
     setViewMonth(prev => changeMonth(prev, offset))
@@ -95,6 +107,13 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
     const now = new Date()
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     return viewMonth.getTime() < currentMonthStart.getTime()
+  }, [viewMonth])
+
+  const canGoNextYear = useMemo(() => {
+    const now = new Date()
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const nextYearMonth = new Date(viewMonth.getFullYear() + 1, viewMonth.getMonth(), 1)
+    return nextYearMonth.getTime() <= currentMonthStart.getTime()
   }, [viewMonth])
 
   const handlePressDay = useCallback((dateText: string) => {
@@ -139,12 +158,18 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
     <View style={styles.container}>
       {/* 月份切换 */}
       <View style={styles.header}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => changeMonthBy(-12)}>
+          <Icon name="chevron-left-2" size={18} color={theme['c-font']} />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.iconBtn} onPress={() => changeMonthBy(-1)}>
           <Icon name="chevron-left" size={18} color={theme['c-font']} />
         </TouchableOpacity>
         <Text style={styles.monthTitle}>{monthText}</Text>
         <TouchableOpacity style={styles.iconBtn} disabled={!canGoNext} onPress={() => changeMonthBy(1)}>
           <Icon name="chevron-right" size={18} color={canGoNext ? theme['c-font'] : theme['c-300']} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconBtn} disabled={!canGoNextYear} onPress={() => changeMonthBy(12)}>
+          <Icon name="chevron-right-2" size={18} color={canGoNextYear ? theme['c-font'] : theme['c-300']} />
         </TouchableOpacity>
       </View>
 
