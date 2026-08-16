@@ -164,7 +164,7 @@ export const buildAiPromptBody = (
   lines.push(`总播放:${overview.total_plays}次 | 总时长:${overview.total_duration_min}分钟 | 活跃:${overview.active_days}天`)
   if (overview.top_song) lines.push(`最多播放:${overview.top_song.name} - ${overview.top_song.singer}(${overview.top_song.plays}次)`)
   if (overview.top_artist) lines.push(`最多歌手:${overview.top_artist.name}(${overview.top_artist.plays}次)`)
-  if (time.session_stats) lines.push(`播放会话:${time.session_stats.session_count}次,均${time.session_stats.avg_min}分钟,最长${time.session_stats.longest_min}分钟`)
+  if (time.session_stats) lines.push(`播放${time.session_stats.session_count}次,平均每次只听了${time.session_stats.avg_min}分钟(可能是没听完就切),最长一次连续听了${time.session_stats.longest_min}分钟`) 
   if (typeof time.late_night_ratio === 'number') lines.push(`深夜占比:${Math.round(time.late_night_ratio * 100)}%`)
   if (taste.repeat_obsession) lines.push(`循环之王:${taste.repeat_obsession.name} - ${taste.repeat_obsession.singer}(${taste.repeat_obsession.plays}次)`)
   if (taste.genre_shift?.top_genres?.length) lines.push(`常听歌手:${taste.genre_shift.top_genres.join('/')}`)
@@ -181,6 +181,11 @@ export const buildAiSystemForReport = (): string => {
     '2. 每张卡:card_key(菜单里的 key)、title(AI 自由起名,要有惊喜感,像懂 TA 的朋友说的话)、body(2-3 句,基于数据)、data_basis(数据依据,证明不是编的)',
     '3. 如果数据里有特别意外的点(某首歌深夜突然回归/某天爆听/被低估的歌手等),可写 1 张 card_key="surprise" 的自由惊喜卡(同样要有 data_basis);没有惊喜点就不写',
     '4. 不要写满所有卡型,只挑真正有故事性的',
+    '',
+    '重要语义(避免误解数据):',
+    '- "平均每次播放X分钟"是播放行为(可能没听完就切),不是歌曲本身长度;',
+    '- "最长一次连续播放X分钟"是单次连续聆听时长,不是某首歌的长度;',
+    '- 写 fragments/专注时刻 等卡型时,不要说"这首歌X分钟",要说"你听了X分钟就切/连续听了X分钟";',
     '',
     '卡型菜单(挑 3-6 张):',
     '- deep_night 深夜高墙:深夜播放占比高',
