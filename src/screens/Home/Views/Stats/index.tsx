@@ -1,12 +1,14 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
+import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
+import ChoosePath, { type ChoosePathType } from '@/components/common/ChoosePath'
 import { useTheme } from '@/store/theme/hook'
-import { createStyle } from '@/utils/tools'
+import { createStyle, handleReadFile, handleSaveFile, toast } from '@/utils/tools'
 import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
 import AiConfig from '../Setting/settings/Other/AiConfig'
-import { getStatsOverview, getStatsTopSongs, getStatsTopArtists, getStatsDailyByDay } from '@/core/player/stats'
+import { exportStatsData, getStatsDailyByDay, getStatsOverview, getStatsTopArtists, getStatsTopSongs, importStatsData } from '@/core/player/stats'
 import { formatDuration, getTodayText } from './utils'
 
 /**
@@ -20,6 +22,10 @@ export default memo(() => {
   const [topArtists, setTopArtists] = useState<Array<{ singer: string; plays: number; duration: number }>>([])
   const [selectedDate, setSelectedDate] = useState<string>(getTodayText())
   const [selectedDayDuration, setSelectedDayDuration] = useState(0)
+  const [chooseVisible, setChooseVisible] = useState(false)
+  const choosePathRef = useRef<ChoosePathType>(null)
+  const chooseActionRef = useRef<'stats-export' | 'stats-import'>('stats-export')
+  const importConfirmRef = useRef<ConfirmAlertType>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -66,6 +72,41 @@ export default memo(() => {
   const handleSelectDate = useCallback((dateText: string) => {
     setSelectedDate(dateText)
   }, [])
+
+  const handleChooseConfirm = useCallback((path: string) => {
+    const action = chooseActionRef.current
+    if (action === 'stats-export') {
+      void exportStatsData()
+        .then((data) => handleSaveFile(`${path}/lx_stats.lxmc`, data))
+        .then(() => toast('账本数据已导出'))
+        .catch((err: any) => toast(`导出失败:${err?.message ?? err}`, 'long'))
+    } else {
+      void handleReadFile(path)
+        .then((data) => importStatsData(data))
+        .then(() => toast('账本数据已导入'))
+        .catch((err: any) => toast(`导入失败:${err?.message ?? err}`, 'long'))
+    }
+  }, [])
+
+  const showChoose = useCallback(
+    (action: 'stats-export' | 'stats-import') => {
+      chooseActionRef.current = action
+      const options = {
+        title: action === 'stats-export' ? '选择账本导出目录' : '选择账本备份文件',
+        dirOnly: action === 'stats-export',
+        filter: ['lxmc', 'json'],
+      }
+      if (chooseVisible) {
+        choosePathRef.current?.show(options)
+      } else {
+        setChooseVisible(true)
+        requestAnimationFrame(() => {
+          choosePathRef.current?.show(options)
+        })
+      }
+    },
+    [chooseVisible]
+  )
 
   const rankItems = useMemo(() => {
     const top = topSongs.slice(0, 10)
@@ -161,7 +202,33 @@ export default memo(() => {
         <View style={styles.section}>
           <AiConfig />
         </View>
+
+        {/* 账本数据备份 */}
+        <View style={styles.section}>
+          <Text size={15} color={theme['c-font']} style={styles.sectionTitle}>账本数据备份</Text>
+          <View style={styles.backupRow}>
+            <TouchableOpacity style={styles.backupBtn} onPress={() => showChoose('stats-export')}>
+              <Text size={14} color={theme['c-primary']}>导出账本</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.backupBtn} onPress={() => importConfirmRef.current?.setVisible(true)}>
+              <Text size={14} color={theme['c-primary']}>导入账本</Text>
+            </TouchableOpacity>
+          </View>
+          <Text size={11} color={theme['c-500']} style={styles.hint}>
+            包含每日聚合/歌曲维度/原始事件,即热力图、排行、账本等全部本地统计
+          </Text>
+        </View>
       </ScrollView>
+      {chooseVisible ? <ChoosePath ref={choosePathRef} onConfirm={handleChooseConfirm} /> : null}
+      <ConfirmAlert
+        ref={importConfirmRef}
+        title="导入账本数据"
+        text="导入将覆盖当前账本数据(每日聚合/歌曲/事件),确定吗?"
+        cancelText="取消"
+        confirmText="导入"
+        bgHide={false}
+        onConfirm={() => showChoose('stats-import')}
+      />
     </View>
   )
 })
@@ -195,6 +262,18 @@ const styles = createStyle({
   emptyTip: {
     textAlign: 'center',
     paddingVertical: 16,
+  },
+  backupRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+  },
+  backupBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: 'rgba(128,128,128,0.4)',
   },
   rankList: {
     paddingBottom: 4,

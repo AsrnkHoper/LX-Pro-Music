@@ -323,3 +323,24 @@ export const getStatsTopArtists = async (limit = 50) => {
 }
 
 export const getStatsDayStart = getDayStart
+
+/** 导出全部账本数据(每日聚合 + 歌曲维度 + 原始事件,含热力图/排行等所有本地统计) */
+export const exportStatsData = async () => {
+  const [daily, song, events] = await getDataMultiple([statsDailyKey, statsSongKey, statsEventsKey])
+  return {
+    type: 'lx_stats_backup',
+    version: 1,
+    exportedAt: Date.now(),
+    daily: (daily[1] as LX.Stats.DailyItem[] | null) ?? [],
+    song: (song[1] as LX.Stats.SongItem[] | null) ?? [],
+    events: (events[1] as LX.Stats.EventItem[] | null) ?? [],
+  }
+}
+
+/** 导入账本数据(覆盖当前 daily/song/events 三张表) */
+export const importStatsData = async (data: any) => {
+  if (!data || data.type !== 'lx_stats_backup' || data.version !== 1) throw new Error('账本备份格式不正确')
+  if (!Array.isArray(data.daily) || !Array.isArray(data.song) || !Array.isArray(data.events)) throw new Error('账本备份格式不正确')
+  await saveDataMultiple([[statsDailyKey, data.daily], [statsSongKey, data.song], [statsEventsKey, data.events]])
+  global.app_event.statsUpdated()
+}

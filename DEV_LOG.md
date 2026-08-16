@@ -185,3 +185,21 @@ src/
 3. 动态卡重做：主色装饰圆 + 彩色标签行（点+文字），AI 标题 24 加粗当主角，正文 15/22，数据依据小字沉底
 
 **验证**：`npx tsc --noEmit` 基线 252 条存量错误，修复后 252 条，零新增错误
+
+---
+
+### 2026-08-16 - 交互补全：详情面板/卡片变体/档案馆管理/账本备份
+
+**详情页看不清**：`AnimatedSlideUpPanel` 增加 `height` prop；StoryFlow 详情面板改 70% 高 + 不透明 `c-content-background` 实底 + 正文 `c-font` 15
+
+**卡片排版固定**：动态卡按 `card_key+周期+序号` 哈希选择 3 种排版变体（标题上/正文上/居中引言），装饰圆位置随变体变化
+
+**档案馆管理**：
+1. 新增删除（ConfirmAlert 确认后删除并刷新）
+2. 新增导出/导入：`lx_report_archive.lxmc`，导入按 id 去重合并，最多 30 份
+
+**账本数据导入导出**：
+1. `core/player/stats.ts` 新增 `exportStatsData` / `importStatsData`
+2. 统计页底部新增「账本数据备份」：导出/导入 `lx_stats.lxmc`（daily/song/events 三表）
+
+**验证**：`npx tsc --noEmit` 基线 252 条存量错误，修复后 252 条，零新增错误

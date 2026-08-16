@@ -256,6 +256,30 @@ export const getReportArchive = async (): Promise<ArchiveItem[]> => {
   return [...list].sort((a, b) => b.generatedAt - a.generatedAt)
 }
 
+/** 删除档案馆中的一份报告 */
+export const deleteReportFromArchive = async (id: string): Promise<void> => {
+  const list = await getReportArchive()
+  await saveData(archiveKey, list.filter((it) => it.id !== id))
+}
+
+/** 导入报告到档案馆:与现有报告按 id 去重合并,保留最多 30 份 */
+export const importReportArchive = async (items: ArchiveItem[]): Promise<void> => {
+  if (!Array.isArray(items)) throw new Error('报告档案格式不正确')
+  for (const it of items) {
+    if (!it || typeof it !== 'object' || !it.id || !it.period || !it.report || typeof it.generatedAt !== 'number') {
+      throw new Error('报告档案格式不正确')
+    }
+  }
+  const list = await getReportArchive()
+  const map = new Map<string, ArchiveItem>()
+  for (const it of list) map.set(it.id, it)
+  for (const it of items) map.set(it.id, it)
+  const merged = Array.from(map.values())
+    .sort((a, b) => b.generatedAt - a.generatedAt)
+    .slice(0, 30)
+  await saveData(archiveKey, merged)
+}
+
 /** 追加一份报告到档案馆(每次生成都保留,不覆盖,最多留 30 份) */
 export const addReportToArchive = async (report: AiReportV2): Promise<void> => {
   const list = await getReportArchive()

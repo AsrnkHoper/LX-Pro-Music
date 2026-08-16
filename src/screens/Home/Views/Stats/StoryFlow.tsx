@@ -40,6 +40,8 @@ export interface StoryCard {
   tag?: string
   /** 标签配色 */
   tagColor?: string
+  /** 排版变体(0/1/2,动态卡按 card_key+周期 确定性变化,制造新鲜感) */
+  layout?: number
 }
 
 interface CardMeta {
@@ -102,6 +104,15 @@ const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+/** 简单字符串哈希:同一个报告同一张卡每次进来排版一致,不同报告/不同卡之间形成变化 */
+const hashLayout = (text: string): number => {
+  let h = 0
+  for (let i = 0; i < text.length; i++) {
+    h = (h * 31 + text.charCodeAt(i)) >>> 0
+  }
+  return h % 3
+}
+
 /** 由 AiReportV2 组装卡片列表(v3:封面固定 + AI 自选 cards 数组 + 海报固定) */
 export const buildCards = (report: AiReportV2): StoryCard[] => {
   const cards: StoryCard[] = []
@@ -133,6 +144,7 @@ export const buildCards = (report: AiReportV2): StoryCard[] => {
       note: c.data_basis,
       tag: `${meta.emoji} ${meta.name}`,
       tagColor: meta.color,
+      layout: hashLayout(`${c.card_key}|${report.period.start}|${i}`),
       letter: buildCardLetter(report, c.body, c.data_basis, meta),
     })
   })
@@ -252,9 +264,52 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
         { width: windowWidth - 48, backgroundColor: item.bgColor || theme['c-primary-background'] },
       ]
 
+      const layout = item.layout ?? 0
+      const decorStyle =
+        layout === 1 ? styles.cardDecorBL : layout === 2 ? styles.cardDecorTL : styles.cardDecorTR
+      const titleSize = item.kind === 'cover' ? 28 : layout === 2 ? 20 : 24
+
+      const tagBlock = item.tag ? (
+        <View style={styles.cardTagRow}>
+          <View style={[styles.cardTagDot, { backgroundColor: item.tagColor || theme['c-primary'] }]} />
+          <Text size={12} color={item.tagColor || theme['c-primary']}>
+            {item.tag}
+          </Text>
+        </View>
+      ) : null
+
+      const titleBlock = (
+        <Text size={titleSize} color={fg} style={[styles.cardTitle, layout === 1 ? styles.cardTitleBottom : null]}>
+          {item.title}
+        </Text>
+      )
+
+      const bodyBlock = item.body.map((line, i) => {
+        const isQuote = layout === 2 && i === 0
+        return line ? (
+          <Text
+            key={i}
+            size={isQuote ? 17 : 15}
+            color={bodyFg}
+            style={[styles.cardBodyLine, isQuote ? styles.cardBodyQuote : null]}
+          >
+            {line}
+          </Text>
+        ) : null
+      })
+
+      const noteBlock = item.note ? (
+        <Text size={12} color={subFg} style={styles.cardNote}>
+          数据依据:{item.note}
+        </Text>
+      ) : null
+
       const cardFace = (
         <>
-          <View pointerEvents="none" style={[styles.cardDecor, { backgroundColor: hexToRgba(item.tagColor || theme['c-primary'], 0.12) }]} />
+          <View
+            pointerEvents="none"
+            style={[decorStyle, { backgroundColor: hexToRgba(item.tagColor || theme['c-primary'], 0.12) }]}
+          />
           <View style={styles.cardTop}>
             <Text size={12} color={subFg}>
               {item.label}
@@ -263,30 +318,21 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
               {index + 1} / {cards.length}
             </Text>
           </View>
-          <View style={styles.cardMain}>
-            {item.tag ? (
-              <View style={styles.cardTagRow}>
-                <View style={[styles.cardTagDot, { backgroundColor: item.tagColor || theme['c-primary'] }]} />
-                <Text size={12} color={item.tagColor || theme['c-primary']}>
-                  {item.tag}
-                </Text>
-              </View>
-            ) : null}
-            <Text size={item.kind === 'cover' ? 28 : 24} color={fg} style={styles.cardTitle}>
-              {item.title}
-            </Text>
-            {item.body.map((line, i) =>
-              line ? (
-                <Text key={i} size={15} color={bodyFg} style={styles.cardBodyLine}>
-                  {line}
-                </Text>
-              ) : null
+          <View style={[styles.cardMain, layout === 2 ? styles.cardMainCenter : null]}>
+            {layout === 0 ? (
+              <>
+                {tagBlock}
+                {titleBlock}
+                {bodyBlock}
+              </>
+            ) : (
+              <>
+                {tagBlock}
+                {bodyBlock}
+                {titleBlock}
+              </>
             )}
-            {item.note ? (
-              <Text size={12} color={subFg} style={styles.cardNote}>
-                数据依据:{item.note}
-              </Text>
-            ) : null}
+            {noteBlock}
           </View>
           {item.letter ? (
             <Text size={12} color={subFg} style={styles.cardHint}>
@@ -360,8 +406,8 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
       </View>
 
       {/* 详情上滑面板 */}
-      <AnimatedSlideUpPanel ref={letterRef}>
-        <ScrollView style={[styles.letterPanel, { backgroundColor: theme['c-primary-background'] }]} contentContainerStyle={styles.letterPanelContent}>
+      <AnimatedSlideUpPanel ref={letterRef} height="70%">
+        <ScrollView style={[styles.letterPanel, { backgroundColor: theme['c-content-background'] }]} contentContainerStyle={styles.letterPanelContent}>
           <TouchableOpacity onPress={() => letterRef.current?.setVisible(false)}>
             <Text size={14} color={theme['c-primary']}>
               ← 返回卡片
@@ -370,7 +416,7 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
           <Text size={18} color={theme['c-font']} style={styles.letterTitle}>
             {currentCard?.title}
           </Text>
-          <Text size={14} color={theme['c-600']} style={styles.letterBody}>
+          <Text size={15} color={theme['c-font']} style={styles.letterBody}>
             {currentCard?.letter}
           </Text>
         </ScrollView>
@@ -407,10 +453,26 @@ const styles = createStyle({
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  cardDecor: {
+  cardDecorTR: {
     position: 'absolute',
     top: -48,
     right: -48,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+  },
+  cardDecorBL: {
+    position: 'absolute',
+    bottom: -48,
+    left: -48,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+  },
+  cardDecorTL: {
+    position: 'absolute',
+    top: -48,
+    left: -48,
     width: 180,
     height: 180,
     borderRadius: 90,
@@ -491,6 +553,9 @@ const styles = createStyle({
     flex: 1,
     justifyContent: 'center',
   },
+  cardMainCenter: {
+    alignItems: 'center',
+  },
   cardTagRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -507,9 +572,17 @@ const styles = createStyle({
     marginBottom: 12,
     lineHeight: 32,
   },
+  cardTitleBottom: {
+    marginTop: 16,
+    marginBottom: 0,
+  },
   cardBodyLine: {
     marginVertical: 4,
     lineHeight: 22,
+  },
+  cardBodyQuote: {
+    lineHeight: 26,
+    marginVertical: 8,
   },
   cardNote: {
     marginTop: 16,
