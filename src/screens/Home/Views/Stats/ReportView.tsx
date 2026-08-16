@@ -181,7 +181,7 @@ export default memo(
               )}
             </ScrollView>
           ) : report ? (
-            <StoryFlow report={report} />
+            <StoryFlow report={report} onRegeneratePoster={() => handleGenerate(true)} />
           ) : (
             <View style={styles.empty}>
               <Text size={15} color={theme['c-500']} style={styles.emptyText}>
