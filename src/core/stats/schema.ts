@@ -152,14 +152,11 @@ export const validateReportV2 = (data: unknown): string[] => {
   const missing: string[] = []
   if (report.schema_version !== 2) missing.push(`schema_version=${String(report.schema_version)}`)
   if (!report.period || !report.period.start || !report.period.end) missing.push('period')
-  if (!report.overview || typeof report.overview !== 'object') {
-    missing.push('overview')
-  } else {
-    const o = report.overview as Partial<Overview>
-    if (typeof o.total_plays !== 'number') missing.push('overview.total_plays')
-    if (typeof o.total_duration_min !== 'number') missing.push('overview.total_duration_min')
-    if (typeof o.active_days !== 'number') missing.push('overview.active_days')
-  }
+  // v3:overview/time/taste 是本地事实层(App 自己算,finalizeReport 填回),不要求 AI 输出
+  // 核心必填:identity + cards(至少1张) + poster(AI 原创部分)
+  if (!report.identity || !report.identity.period_name) missing.push('identity.period_name')
+  if (!Array.isArray(report.cards) || report.cards.length === 0) missing.push('cards(至少1张)')
+  if (!report.poster || !report.poster.headline) missing.push('poster.headline')
   return missing
 }
 

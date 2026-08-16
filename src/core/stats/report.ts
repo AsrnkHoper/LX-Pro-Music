@@ -360,7 +360,7 @@ export const generateWeeklyReport = async (force = false): Promise<GenerateRepor
         apiKey: config.apiKey,
         model: config.model,
         system: `${system}
-注意:上次返回缺少这些必填字段:${first.missing.join(', ')},请补全后重新输出完整 JSON。overview.time.taste 及其内部必填字段必须全部包含。`,
+注意:上次返回缺少这些必填字段:${first.missing.join(', ')},请补全后重新输出完整 JSON。identity.period_name、cards(至少1张)、poster.headline 是必填,必须全部包含。`,
         user: userData,
         capability,
         maxTokens: 8192,
