@@ -1,0 +1,28 @@
+# LX Music Pro CODEOWNERS
+# 每个文件/文件夹的"主人"——改不属于自己的文件,PR 必须经主人 review
+
+# 琥珀(核心:统计+AI)
+/src/core/player/stats.ts          @AsrnkHoper
+/src/core/stats/                    @AsrnkHoper
+/src/core/init/player/stats.ts     @AsrnkHoper
+/docs/hoper/                        @AsrnkHoper
+
+# 开发者 A(UI/前端)
+/src/screens/Home/Views/            @developerA
+/src/components/common/             @developerA
+
+# 开发者 B(播放/音频)
+/src/core/player/                   @developerB
+/src/plugins/lyric.ts              @developerB
+
+# 开发者 C(设置/配置)
+/src/screens/Home/Views/Setting/    @developerC
+/src/config/                        @developerC
+
+# CI/发布(谁管 CI 谁负责)
+/.github/workflows/                 @developerD
+/tools/                             @developerD
+
+# 默认:所有文件都需要琥珀 review
+# 如果上面没匹配到,默认 owner 是琥珀
+*                                   @AsrnkHoper
