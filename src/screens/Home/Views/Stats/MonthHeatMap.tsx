@@ -5,6 +5,8 @@ import { Icon } from '@/components/common/Icon'
 import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle, toast } from '@/utils/tools'
+import { addTempPlayList } from '@/core/player/tempPlayList'
+import { play } from '@/core/player/player'
 import {
   changeMonth,
   formatDuration,
@@ -120,6 +122,12 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
     if (dateText > todayText) return
     onSelectDate(dateText)
   }, [onSelectDate, todayText])
+
+  const handlePlayEvent = useCallback((event: LX.Stats.EventItem) => {
+    if (!event.musicInfo) return
+    addTempPlayList([{ listId: null, musicInfo: event.musicInfo }])
+    play()
+  }, [])
 
   const handleLongPressDay = useCallback((dateText: string) => {
     if (dateText > todayText) return
@@ -258,13 +266,13 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
               <Text size={13} color={theme['c-500']} style={styles.emptyTip}>当天暂无播放记录</Text>
             ) : (
               dayEvents.map(event => (
-                <View key={event.id} style={styles.dayListItem}>
+                <TouchableOpacity key={event.id} style={styles.dayListItem} onPress={() => handlePlayEvent(event)}>
                   <View style={styles.dayListItemMain}>
                     <Text size={13} color={theme['c-font']} numberOfLines={1}>{event.musicInfo.name}</Text>
                     <Text size={12} color={theme['c-500']} numberOfLines={1}>{event.musicInfo.singer}</Text>
                   </View>
                   <Text size={12} color={theme['c-500']}>{formatDurationFull(event.playTime)}</Text>
-                </View>
+                </TouchableOpacity>
               ))
             )}
           </ScrollView>

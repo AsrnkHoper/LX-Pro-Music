@@ -39,7 +39,7 @@ export default memo(
     const [genStage, setGenStage] = useState(0)
     const [waitSeconds, setWaitSeconds] = useState(0)
     const [chooseVisible, setChooseVisible] = useState(false)
-    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+    const pendingDeleteIdRef = useRef<string | null>(null)
     const choosePathRef = useRef<ChoosePathType>(null)
     const chooseActionRef = useRef<'archive-export' | 'archive-import'>('archive-export')
     const deleteConfirmRef = useRef<ConfirmAlertType>(null)
@@ -95,10 +95,12 @@ export default memo(
     const showChoose = useCallback(
       (action: 'archive-export' | 'archive-import') => {
         chooseActionRef.current = action
-        const options = {
+        const options: { title: string; dirOnly: boolean; filter?: string[] } = {
           title: action === 'archive-export' ? '选择报告档案导出目录' : '选择报告档案文件',
           dirOnly: action === 'archive-export',
-          filter: ['lxmc', 'json'],
+        }
+        if (action === 'archive-import') {
+          options.filter = undefined
         }
         if (chooseVisible) {
           choosePathRef.current?.show(options)
@@ -113,7 +115,7 @@ export default memo(
     )
 
     const handleDeleteArchive = useCallback((id: string) => {
-      setPendingDeleteId(id)
+      pendingDeleteIdRef.current = id
       deleteConfirmRef.current?.setVisible(true)
     }, [])
 
@@ -280,7 +282,7 @@ export default memo(
             confirmText="删除"
             bgHide={false}
             onConfirm={() => {
-              const id = pendingDeleteId
+              const id = pendingDeleteIdRef.current
               if (!id) return
               void deleteReportFromArchive(id)
                 .then(() => refreshArchive())

@@ -22,7 +22,7 @@ const AnimatedSlideUpPanel = forwardRef<AnimatedSlideUpPanelType, Props>(({ chil
     setIsVisible(true);
     Animated.timing(animatedValue, {
       toValue: 0,
-      duration: 0,
+      duration: 300,
       useNativeDriver: true,
     }).start();
   }, [animatedValue]);
@@ -30,7 +30,7 @@ const AnimatedSlideUpPanel = forwardRef<AnimatedSlideUpPanelType, Props>(({ chil
   const hide = useCallback(() => {
     Animated.timing(animatedValue, {
       toValue: windowHeight,
-      duration: 0,
+      duration: 250,
       useNativeDriver: true,
     }).start(() => {
       setIsVisible(false);
@@ -98,6 +98,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
   },
 });
 

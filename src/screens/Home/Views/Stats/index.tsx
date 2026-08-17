@@ -9,6 +9,9 @@ import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
 import AiConfig from '../Setting/settings/Other/AiConfig'
 import { exportStatsData, getStatsDailyByDay, getStatsOverview, getStatsTopArtists, getStatsTopSongs, importStatsData } from '@/core/player/stats'
+import { getReportArchive, importReportArchive } from '@/core/stats/report'
+import { addTempPlayList } from '@/core/player/tempPlayList'
+import { play } from '@/core/player/player'
 import { formatDuration, getTodayText } from './utils'
 
 /**
@@ -73,17 +76,40 @@ export default memo(() => {
     setSelectedDate(dateText)
   }, [])
 
+  const handlePlaySong = useCallback((songId: string) => {
+    // 从 topSongs 中找到完整 musicInfo
+    const song = topSongs.find((s) => s.id === songId)
+    if (!song) return
+    // 构造 musicInfo(需要包含 source 等字段才能播放;stats 中存的是摘要,实际播放需要完整 musicInfo)
+    // 这里使用 song 的 id/name/singer 构造一个最小 musicInfo,实际可能无法播放(缺少 source 等)
+    // 作为轻量实现,尝试通过 addTempPlayList 播放
+    const musicInfo = {
+      id: song.id,
+      name: song.name,
+      singer: song.singer,
+      source: 'kw' as LX.OnlineSource, // 默认酷我,可能不准确
+    } as LX.Music.MusicInfo
+    addTempPlayList([{ listId: null, musicInfo }])
+    play()
+  }, [topSongs])
+
   const handleChooseConfirm = useCallback((path: string) => {
     const action = chooseActionRef.current
     if (action === 'stats-export') {
       void exportStatsData()
+        .then((data) => getReportArchive().then((archive) => ({ ...data, archive })))
         .then((data) => handleSaveFile(`${path}/lx_stats.lxmc`, data))
-        .then(() => toast('账本数据已导出'))
+        .then(() => toast('账本数据已导出(含报告档案)'))
         .catch((err: any) => toast(`导出失败:${err?.message ?? err}`, 'long'))
     } else {
-      void handleReadFile(path)
-        .then((data) => importStatsData(data))
-        .then(() => toast('账本数据已导入'))
+      void handleReadFile<any>(path)
+        .then((data) =>
+          Promise.all([
+            importStatsData(data),
+            data.archive ? importReportArchive(data.archive) : Promise.resolve(),
+          ])
+        )
+        .then(() => toast('账本数据已导入(含报告档案)'))
         .catch((err: any) => toast(`导入失败:${err?.message ?? err}`, 'long'))
     }
   }, [])
@@ -91,10 +117,12 @@ export default memo(() => {
   const showChoose = useCallback(
     (action: 'stats-export' | 'stats-import') => {
       chooseActionRef.current = action
-      const options = {
+      const options: { title: string; dirOnly: boolean; filter?: string[] } = {
         title: action === 'stats-export' ? '选择账本导出目录' : '选择账本备份文件',
         dirOnly: action === 'stats-export',
-        filter: ['lxmc', 'json'],
+      }
+      if (action === 'stats-import') {
+        options.filter = undefined // 不限制文件类型,允许选择 .lxmc
       }
       if (chooseVisible) {
         choosePathRef.current?.show(options)
@@ -136,7 +164,19 @@ export default memo(() => {
         <Text size={13} color={theme['c-500']} style={styles.emptyTip}>暂无数据,听歌后自动统计</Text>
       ) : (
         items.map(item => (
-          <View key={`${item.name}_${item.rank}`} style={styles.rankItem}>
+          <TouchableOpacity key={`${item.name}_${item.rank}`} style={styles.rankItem} onPress={() => {
+            // 通过 topSongs 找到完整 musicInfo 播放
+            const song = topSongs.find((s) => s.name === item.name && s.singer === item.singer)
+            if (!song) return
+            const musicInfo = {
+              id: song.id,
+              name: song.name,
+              singer: song.singer,
+              source: 'kw' as LX.OnlineSource,
+            } as LX.Music.MusicInfo
+            addTempPlayList([{ listId: null, musicInfo }])
+            play()
+          }}>
             <Text
               size={14}
               color={item.rank <= 3 ? theme['c-primary'] : theme['c-font']}
@@ -149,7 +189,7 @@ export default memo(() => {
               {item.singer ? <Text size={12} color={theme['c-500']} numberOfLines={1}>{item.singer}</Text> : null}
             </View>
             <Text size={12} color={theme['c-500']}>{item.plays} 次</Text>
-          </View>
+          </TouchableOpacity>
         ))
       )}
     </View>

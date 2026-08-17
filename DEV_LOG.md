@@ -203,3 +203,21 @@ src/
 2. 统计页底部新增「账本数据备份」：导出/导入 `lx_stats.lxmc`（daily/song/events 三表）
 
 **验证**：`npx tsc --noEmit` 基线 252 条存量错误，修复后 252 条，零新增错误
+
+---
+
+### 2026-08-16 - 交互打磨：面板动画+圆角/卡片5变体/归档删除修复/导入不限格式/账本含报告/点播
+
+**面板动画生硬**：`AnimatedSlideUpPanel` 动画 duration 300/250ms，面板加圆角 16
+
+**卡片布局不够分散**：排版变体 3→5，装饰圆增加右下/居中，`cardMain` justifyContent 分散
+
+**档案馆删除无反应**：`pendingDeleteId` 改用 `useRef` 修复闭包 stale
+
+**导入无法选中 .lxmc**：导入不再传 `filter`，允许系统文件选择器显示所有文件
+
+**账本不含报告档案**：`Stats/index` 导出/导入同步处理 `getReportArchive` / `importReportArchive`
+
+**热力图/排行可点播**：`MonthHeatMap` 账本每首歌可点击播放；`Stats/index` 歌曲排行可点击播放；通过 `addTempPlayList` + `play()` 实现
+
+**验证**：`npx tsc --noEmit` 基线 252 条，修复后 252 条，零新增

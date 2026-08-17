@@ -110,7 +110,7 @@ const hashLayout = (text: string): number => {
   for (let i = 0; i < text.length; i++) {
     h = (h * 31 + text.charCodeAt(i)) >>> 0
   }
-  return h % 3
+  return h % 5
 }
 
 /** 由 AiReportV2 组装卡片列表(v3:封面固定 + AI 自选 cards 数组 + 海报固定) */
@@ -266,8 +266,12 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
 
       const layout = item.layout ?? 0
       const decorStyle =
-        layout === 1 ? styles.cardDecorBL : layout === 2 ? styles.cardDecorTL : styles.cardDecorTR
-      const titleSize = item.kind === 'cover' ? 28 : layout === 2 ? 20 : 24
+        layout === 1 ? styles.cardDecorBL
+        : layout === 2 ? styles.cardDecorTL
+        : layout === 3 ? styles.cardDecorBR
+        : layout === 4 ? styles.cardDecorCenter
+        : styles.cardDecorTR
+      const titleSize = item.kind === 'cover' ? 28 : layout === 2 || layout === 4 ? 20 : 24
 
       const tagBlock = item.tag ? (
         <View style={styles.cardTagRow}>
@@ -285,7 +289,7 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
       )
 
       const bodyBlock = item.body.map((line, i) => {
-        const isQuote = layout === 2 && i === 0
+        const isQuote = (layout === 2 || layout === 4) && i === 0
         return line ? (
           <Text
             key={i}
@@ -318,7 +322,12 @@ export default memo(({ report, onRegeneratePoster }: { report: AiReportV2; onReg
               {index + 1} / {cards.length}
             </Text>
           </View>
-          <View style={[styles.cardMain, layout === 2 ? styles.cardMainCenter : null]}>
+          <View style={[
+            styles.cardMain,
+            layout === 2 || layout === 4 ? styles.cardMainCenter : null,
+            layout === 3 ? styles.cardMainStart : null,
+            layout === 4 ? styles.cardMainEnd : null,
+          ]}>
             {layout === 0 ? (
               <>
                 {tagBlock}
@@ -477,6 +486,24 @@ const styles = createStyle({
     height: 180,
     borderRadius: 90,
   },
+  cardDecorBR: {
+    position: 'absolute',
+    bottom: -48,
+    right: -48,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+  },
+  cardDecorCenter: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    marginLeft: -100,
+    marginTop: -100,
+  },
   cardPoster: {
     padding: 0,
     justifyContent: 'center',
@@ -555,6 +582,12 @@ const styles = createStyle({
   },
   cardMainCenter: {
     alignItems: 'center',
+  },
+  cardMainStart: {
+    justifyContent: 'flex-start',
+  },
+  cardMainEnd: {
+    justifyContent: 'flex-end',
   },
   cardTagRow: {
     flexDirection: 'row',
