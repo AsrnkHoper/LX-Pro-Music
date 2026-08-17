@@ -112,10 +112,23 @@ export const requestStoragePermission = async () => {
   const isGranted = await checkStoragePermissions()
   if (isGranted) return isGranted
 
-  const uri = await selectManagedFolder()
-  if (!uri.isDirectory) return false
-  await setSelectedManagedFolder(uri.path)
-  return true
+  try {
+    const uri = await selectManagedFolder()
+    if (!uri.isDirectory) {
+      await tipDialog({
+        title: "需要存储权限",
+        message: "请在系统设置中允许存储权限，以便下载和管理音乐文件。",
+        btnText: "去设置",
+        onPress: () => Linking.openSettings(),
+      })
+      return false
+    }
+    await setSelectedManagedFolder(uri.path)
+    return true
+  } catch (error) {
+    console.error("Storage permission error:", error)
+    return false
+  }
 }
 
 export const setBgPic = (pic: string | null) => {

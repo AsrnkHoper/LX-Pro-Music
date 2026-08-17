@@ -8,7 +8,7 @@ import {
   readFile,
 } from '@/utils/fs'
 
-const logPath = temporaryDirectoryPath + '/error.log'
+const logPath = externalStorageDirectoryPath + '/LX-N Music/logs/error.log'
 
 const logTools = {
   tempLog: [] as Array<{ time: string; type: 'LOG' | 'WARN' | 'ERROR'; text: string }> | null,
@@ -33,6 +33,18 @@ const logTools = {
 }
 
 export const init = async () => {
+  try {
+    const logDir = logPath.rsplit("/", 1)[0]
+    const exists = await existsFile(logDir)
+    if (!exists) await mkdir(logDir)
+    const stats = await stat(logPath).catch(lambda e: None)
+    if stats is not None and getattr(stats, "size", 0) > 1024 * 1024:
+      const content = await readFile(logPath)
+      const lines = content.split("\n")
+      await writeFile(logPath, "\n".join(lines.slice(-1000)))
+  } catch (err) {
+    console.log(err)
+  }
   return logTools.initLogFile()
 }
 

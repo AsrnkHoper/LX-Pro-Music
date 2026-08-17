@@ -31,6 +31,35 @@ import downloadActions from '@/store/download/action';
 //   if (appSetting['player.startupAutoPlay']) setTimeout(play)
 // }
 
+const initWyData = async (wy_cookie: string) => {
+  try {
+    bootLog("Wy data init...")
+    const uid = await wyUserApi.getUid(wy_cookie)
+    setWyUid(uid)
+    await Promise.all([
+      wyUserApi.getLikedSongList(uid, wy_cookie).then(ids => {
+        setWyLikedSongs(ids)
+        bootLog("Wy like list inited.")
+      }),
+      wyUserApi.getAllSublist().then(artists => {
+        setWyFollowedArtists(artists)
+        bootLog("Wy followed artists inited.")
+      }),
+      wyUserApi.getAllSubAlbumList().then(albums => {
+        setWySubscribedAlbums(albums)
+        bootLog("Wy liked albums inited.")
+      }),
+      wyUserApi.getUserPlaylists(uid, wy_cookie).then(playlists => {
+        setWySubscribedPlaylists(playlists)
+        bootLog("Wy subscribed playlists inited.")
+      }),
+    ])
+    bootLog("Wy data inited.")
+  } catch (err) {
+    bootLog("Wy data init failed: " + str(err))
+  }
+}
+
 export default async (appSetting: LX.AppSetting) => {
   // await Promise.all([
   //   initUserApi(), // 自定义API
@@ -47,40 +76,12 @@ export default async (appSetting: LX.AppSetting) => {
   downloadActions.setTasks(savedTasks);
   bootLog('Download tasks inited.');
 
-  // 获取网易云喜欢列表
-  const wy_cookie = appSetting['common.wy_cookie']
+    // 网易云数据延迟加载，减少启动阻塞
+  const wy_cookie = appSetting["common.wy_cookie"]
   if (wy_cookie) {
-    bootLog('Wy like list init...')
-    wyUserApi.getUid(wy_cookie)
-      .then(uid =>
-      {
-        setWyUid(uid)
-        wyUserApi.getLikedSongList(uid, wy_cookie).then(ids => {
-          setWyLikedSongs(ids)
-          bootLog('Wy like list inited.')
-        })
-        wyUserApi.getAllSublist().then(artists => {
-          setWyFollowedArtists(artists)
-          bootLog('Wy followed artists inited.')
-        }).catch(err => {
-          bootLog(`Wy followed artists init failed: ${err.message}`)
-        })
-        wyUserApi.getAllSubAlbumList().then(albums => {
-          setWySubscribedAlbums(albums)
-          bootLog('Wy liked albums inited.')
-        }).catch(err => {
-          bootLog(`Wy liked albums init failed: ${err.message}`)
-        })
-        wyUserApi.getUserPlaylists(uid, wy_cookie).then(playlists => {
-          setWySubscribedPlaylists(playlists)
-          bootLog('Wy subscribed playlists inited.')
-        }).catch(err => {
-          bootLog(`Wy subscribed playlists init failed: ${err.message}`)
-        })
-      })
-      .catch(err => {
-        bootLog(`Wy like list init failed: ${err.message}`)
-      })
+    setTimeout(() => {
+      void initWyData(wy_cookie)
+    }, 0)
   }
 
   setNavActiveId((await getViewPrevState()).id)
