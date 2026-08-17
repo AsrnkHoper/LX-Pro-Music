@@ -215,6 +215,14 @@ async function uploadSettings(path: string): Promise<number> {
   return timestamp;
 }
 
+let syncRetryTimer: number | null = null
+export function cancelSyncRetryTimer() {
+  if (syncRetryTimer) {
+    clearTimeout(syncRetryTimer)
+    syncRetryTimer = null
+  }
+}
+
 export async function manualUploadSettingsAndApis() {
   if (isSyncing) {
     toast('正在同步中，请稍后...');
@@ -247,6 +255,12 @@ export async function manualUploadSettingsAndApis() {
     toast(`上传失败: ${error.message}`, 'long');
   } finally {
     isSyncing = false;
+    if (!isManual && !listsChanged) {
+      syncRetryTimer = setTimeout(() => {
+        syncRetryTimer = null;
+        void triggerWebDAVSync(false);
+      }, 5000) as unknown as number;
+    }
   }
 }
 

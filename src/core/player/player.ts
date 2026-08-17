@@ -79,28 +79,38 @@ const diffCurrentMusicInfo = (curMusicInfo: LX.Music.MusicInfo | LX.Download.Lis
 }
 
 let cancelDelayRetry: (() => void) | null = null
+let musicRetryCount = 0
+const MAX_MUSIC_RETRY = 2
 const delayRetry = async (
   musicInfo: LX.Music.MusicInfo | LX.Download.ListItem,
   isRefresh = false
 ): Promise<string | null> => {
-  // if (cancelDelayRetry) cancelDelayRetry()
+  if (cancelDelayRetry) cancelDelayRetry()
   return new Promise<string | null>((resolve, reject) => {
     const time = getRandom(2, 6)
-    setStatusText(global.i18n.t('player__getting_url_delay_retry', { time }))
+    setStatusText(global.i18n.t("player__getting_url_delay_retry", { time }))
     const tiemout = setTimeout(() => {
       getMusicPlayUrl(musicInfo, isRefresh, true)
         .then((result) => {
           cancelDelayRetry = null
+          musicRetryCount = 0
           resolve(result)
         })
         .catch(async (err: any) => {
           cancelDelayRetry = null
+          musicRetryCount += 1
+          if (musicRetryCount >= MAX_MUSIC_RETRY) {
+            musicRetryCount = 0
+            void playNext(true)
+            return
+          }
           reject(err)
         })
     }, time * 1000)
     cancelDelayRetry = () => {
       clearTimeout(tiemout)
       cancelDelayRetry = null
+      musicRetryCount = 0
       resolve(null)
     }
   })
