@@ -76,7 +76,7 @@ export default async (appSetting: LX.AppSetting) => {
   downloadActions.setTasks(savedTasks);
   bootLog('Download tasks inited.');
 
-    // 网易云数据延迟加载，减少启动阻塞
+  // 网易云数据延迟加载，减少启动阻塞
   const wy_cookie = appSetting["common.wy_cookie"]
   if (wy_cookie) {
     setTimeout(() => {

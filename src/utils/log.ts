@@ -1,4 +1,4 @@
-// import { requestStoragePermission } from '@/utils/common'
+// import { requestStoragePermission } from @/utils/common
 import {
   temporaryDirectoryPath,
   existsFile,
@@ -6,24 +6,25 @@ import {
   unlink,
   writeFile,
   readFile,
-} from '@/utils/fs'
+  stat,
+} from @/utils/fs
 
-const logPath = externalStorageDirectoryPath + '/LX-N Music/logs/error.log'
+const logPath = externalStorageDirectoryPath + "/LX-N Music/logs/error.log"
 
 const logTools = {
-  tempLog: [] as Array<{ time: string; type: 'LOG' | 'WARN' | 'ERROR'; text: string }> | null,
+  tempLog: [] as Array<{ time: string; type: "LOG" | "WARN" | "ERROR"; text: string }> | null,
   writeLog(msg: string) {
     console.log(msg)
-    void appendFile(logPath, '\n----lx log----\n' + msg)
+    void appendFile(logPath, "\n----lx log----\n" + msg)
   },
   async initLogFile() {
     try {
       let isExists = await existsFile(logPath)
       // console.log(isExists)
-      if (!isExists) await writeFile(logPath, '')
+      if (!isExists) await writeFile(logPath, "")
       if (this.tempLog?.length)
         this.writeLog(
-          this.tempLog.map((m) => `${m.time} ${m.type} ${m.text}`).join('\n----lx log----\n')
+          this.tempLog.map((m) => `${m.time} ${m.type} ${m.text}`).join("\n----lx log----\n")
         )
       this.tempLog = null
     } catch (err) {
@@ -34,14 +35,15 @@ const logTools = {
 
 export const init = async () => {
   try {
-    const logDir = logPath.split("/").slice(0, -1).join("/")
+    const logDir = logPath.substring(0, logPath.lastIndexOf("/"))
     const exists = await existsFile(logDir)
     if (!exists) await mkdir(logDir)
     const stats = await stat(logPath).catch(() => null)
-    if stats != null and (stats as any)?.size ?? 0 > 1024 * 1024:
+    if (stats && (stats as any)?.size > 1024 * 1024) {
       const content = await readFile(logPath)
       const lines = content.split("\n")
-      await writeFile(logPath, "\n".join(lines.slice(-1000)))
+      await writeFile(logPath, lines.slice(-1000).join("\n"))
+    }
   } catch (err) {
     console.log(err)
   }
@@ -53,7 +55,7 @@ export const getLogs = async () => {
 }
 
 export const clearLogs = async () => {
-  return unlink(logPath).then(async () => writeFile(logPath, ''))
+  return unlink(logPath).then(async () => writeFile(logPath, ""))
 }
 
 export const log = {
@@ -61,44 +63,44 @@ export const log = {
     // console.info(...msgs)
     const msg = msgs
       .map((m) =>
-        typeof m == 'string' ? m : m instanceof Error ? (m.stack ?? m.message) : JSON.stringify(m)
+        typeof m == "string" ? m : m instanceof Error ? (m.stack ?? m.message) : JSON.stringify(m)
       )
-      .join(' ')
-    if (msg.startsWith('%c')) return
+      .join(" ")
+    if (msg.startsWith("%c")) return
     const time = new Date().toLocaleString()
     if (logTools.tempLog) {
-      logTools.tempLog.push({ type: 'LOG', time, text: msg })
+      logTools.tempLog.push({ type: "LOG", time, text: msg })
     } else logTools.writeLog(`${time} LOG ${msg}`)
   },
   warn(...msgs: any[]) {
     // console.warn(...msgs)
     const msg = msgs
       .map((m) =>
-        typeof m == 'string' ? m : m instanceof Error ? (m.stack ?? m.message) : JSON.stringify(m)
+        typeof m == "string" ? m : m instanceof Error ? (m.stack ?? m.message) : JSON.stringify(m)
       )
-      .join(' ')
+      .join(" ")
     const time = new Date().toLocaleString()
     if (logTools.tempLog) {
-      logTools.tempLog.push({ type: 'WARN', time, text: msg })
+      logTools.tempLog.push({ type: "WARN", time, text: msg })
     } else logTools.writeLog(`${time} WARN ${msg}`)
   },
   error(...msgs: any[]) {
     const msg = msgs
       .map((m) =>
-        typeof m == 'string' ? m : m instanceof Error ? (m.stack ?? m.message) : JSON.stringify(m)
+        typeof m == "string" ? m : m instanceof Error ? (m.stack ?? m.message) : JSON.stringify(m)
       )
-      .join(' ')
+      .join(" ")
     const time = new Date().toLocaleString()
     if (logTools.tempLog) {
-      logTools.tempLog.push({ type: 'ERROR', time, text: msg })
+      logTools.tempLog.push({ type: "ERROR", time, text: msg })
     } else {
       logTools.writeLog(`${time} ERROR ${msg}`)
     }
   },
 }
 /*
-if (process.env.NODE_ENV !== 'development') {
-  const logPath = externalDirectoryPath + '/debug.log'
+if (process.env.NODE_ENV !== "development") {
+  const logPath = externalDirectoryPath + "/debug.log"
 
   let tempLog = []
 
@@ -106,31 +108,31 @@ if (process.env.NODE_ENV !== 'development') {
   const error = window.console.error
   const warn = window.console.warn
 
-  const writeLog = msg => appendFile(logPath, '\n' + msg)
+  const writeLog = msg => appendFile(logPath, "\n" + msg)
 
   window.console.log = (...msgs) => {
     log(...msgs)
-    const msg = msgs.map(m => typeof m == 'string' ? m : JSON.stringify(m)).join(' ')
-    if (msg.startsWith('%c')) return
+    const msg = msgs.map(m => typeof m == "string" ? m : JSON.stringify(m)).join(" ")
+    if (msg.startsWith("%c")) return
     const time = new Date().toLocaleString()
     if (tempLog) {
-      tempLog({ type: 'LOG', time, text: msg })
+      tempLog({ type: "LOG", time, text: msg })
     } else writeLog(`${time} LOG ${msg}`)
   }
   window.console.error = (...msgs) => {
     error(...msgs)
-    const msg = msgs.map(m => typeof m == 'string' ? m : JSON.stringify(m)).join(' ')
+    const msg = msgs.map(m => typeof m == "string" ? m : JSON.stringify(m)).join(" ")
     const time = new Date().toLocaleString()
     if (tempLog) {
-      tempLog({ type: 'ERROR', time, text: msg })
+      tempLog({ type: "ERROR", time, text: msg })
     } else writeLog(`${time} ERROR ${msg}`)
   }
   window.console.warn = (...msgs) => {
     warn(...msgs)
-    const msg = msgs.map(m => typeof m == 'string' ? m : JSON.stringify(m)).join(' ')
+    const msg = msgs.map(m => typeof m == "string" ? m : JSON.stringify(m)).join(" ")
     const time = new Date().toLocaleString()
     if (tempLog) {
-      tempLog({ type: 'WARN', time, text: msg })
+      tempLog({ type: "WARN", time, text: msg })
     } else writeLog(`${time} WARN ${msg}`)
   }
 
@@ -140,8 +142,8 @@ if (process.env.NODE_ENV !== 'development') {
       if (!result) return
       let isExists = await existsFile(logPath)
       console.log(logPath, isExists)
-      if (!isExists) await writeFile(logPath, '')
-      writeLog(tempLog(m => `${m.time} ${m.type} ${m.text}`).join('\n'))
+      if (!isExists) await writeFile(logPath, "")
+      writeLog(tempLog(m => `${m.time} ${m.type} ${m.text}`).join("\n"))
       tempLog = null
     } catch (err) {
       console.error(err)
