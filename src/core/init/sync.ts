@@ -1,7 +1,7 @@
 import { connectServer } from '@/plugins/sync'
 import { updateSetting } from '@/core/common'
 import { getSyncHost } from '@/plugins/sync/data'
-import {triggerWebDAVSync} from "@/core/sync/webdavSync.ts";
+import {triggerWebDAVSync} from '@/core/sync/webdavSync.ts';
 
 export default async (setting: LX.AppSetting) => {
   if (setting['sync.webdav.url']) {

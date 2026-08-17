@@ -1,4 +1,4 @@
-// import { requestStoragePermission } from @/utils/common
+// import { requestStoragePermission } from '@/utils/common'
 import {
   temporaryDirectoryPath,
   existsFile,
@@ -7,7 +7,7 @@ import {
   writeFile,
   readFile,
   stat,
-} from @/utils/fs
+} from '@/utils/fs'
 
 const logPath = externalStorageDirectoryPath + "/LX-N Music/logs/error.log"
 

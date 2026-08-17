@@ -8,7 +8,7 @@ import { log } from '@/utils/log';
 import { debounce } from '@/utils/common';
 import { getOperationQueue, clearOperationQueue, loadOperationQueue } from './opQueue';
 import { applyListOperation } from '@/utils/listManage';
-import { overwriteUserApis } from "@/core/userApi.ts";
+import { overwriteUserApis } from '@/core/userApi.ts'
 import { getPlayHistory, savePlayHistory } from '@/utils/data';
 import {
   normalizeDownloadTasksForSync,
