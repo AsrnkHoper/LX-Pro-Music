@@ -34,11 +34,11 @@ const logTools = {
 
 export const init = async () => {
   try {
-    const logDir = logPath.rsplit("/", 1)[0]
+    const logDir = logPath.split("/").slice(0, -1).join("/")
     const exists = await existsFile(logDir)
     if (!exists) await mkdir(logDir)
-    const stats = await stat(logPath).catch(lambda e: None)
-    if stats is not None and getattr(stats, "size", 0) > 1024 * 1024:
+    const stats = await stat(logPath).catch(() => null)
+    if stats != null and (stats as any)?.size ?? 0 > 1024 * 1024:
       const content = await readFile(logPath)
       const lines = content.split("\n")
       await writeFile(logPath, "\n".join(lines.slice(-1000)))
