@@ -42,7 +42,7 @@ const processQueue = async () => {
     downloadActions.updateTask(task.id, { status: 'error', errorMsg: error.message });
   } finally {
     isProcessing = false;
-    processQueue();
+    setTimeout(processQueue, 0);
   }
 };
 

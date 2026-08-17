@@ -219,9 +219,11 @@ export const setMusicUrl = (
         const isWebDAVMusic = 'webdav' in currentMusicInfo.meta && (currentMusicInfo.meta as any).webdav === true
         if (isWebDAVMusic) {
           // 停止播放并清除队列，防止幽灵播放
-          void setStop().then(() => {
+          await setStop()
+          // 再次校验当前歌曲未切换，避免旧请求覆盖新资源
+          if (musicInfo.id === playerState.playMusicInfo.musicInfo?.id) {
             setResource(currentMusicInfo, url, playerState.progress.nowPlayTime)
-          })
+          }
         } else {
           setResource(currentMusicInfo, url, playerState.progress.nowPlayTime)
         }
