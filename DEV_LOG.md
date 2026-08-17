@@ -221,3 +221,42 @@ src/
 **热力图/排行可点播**：`MonthHeatMap` 账本每首歌可点击播放；`Stats/index` 歌曲排行可点击播放；通过 `addTempPlayList` + `play()` 实现
 
 **验证**：`npx tsc --noEmit` 基线 252 条，修复后 252 条，零新增
+
+---
+
+### 2026-08-18 - P0/P1/P2 修复记录
+
+**P0 稳定性修复**
+
+1. `src/core/download.ts`：修复下载队列递归导致栈溢出风险，避免大量下载时崩溃
+2. `src/core/player/player.ts`：修复幽灵播放问题，停止状态不再残留
+3. `src/utils/request.js`：统一网络超时处理，移除调试日志输出
+
+**P1 启动体验优化（已回滚）**
+
+尝试了 3 项启动优化，但构建后实测导致启动错误、日志弹窗、黑屏不退出现象，已全部回滚：
+1. `src/core/init/dataInit.ts`：网易云数据延迟加载
+2. `src/utils/log.ts`：日志改到外部存储持久化
+3. `src/core/common.ts`：存储权限引导增强
+
+**P2 健壮性修复**
+
+1. `src/core/player/player.ts`：播放取 URL 失败时，最多自动重试 2 次，仍失败自动跳到下一首
+2. `src/core/sync/webdavSync.ts`：WebDAV 同步失败时，非手动场景 5 秒后自动重试
+
+**APK 构建问题与修复**
+
+- 触发构建方式：push 到 `main` 分支，触发 `Debug Build` workflow
+- 首次构建失败：`src/utils/log.ts` import 语句缺少引号，导致 Metro/Babel 解析报语法错误
+- 修复：补齐 import 路径引号后重新推送，构建成功
+
+**当前 main 分支有效状态**
+
+- 包含：P0 + P2
+- 已回滚：P1 导致启动崩溃的 3 个改动
+- 可正常启动，`Debug Build` 可正常产出 APK
+
+**后续约定**
+
+- 日常修复直接更新到 `main` 分支
+- `dev` 分支保留，用于向上游提交 PR
