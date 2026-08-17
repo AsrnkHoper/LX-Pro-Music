@@ -10,6 +10,7 @@ import {
   PanResponder,
 } from 'react-native'
 import { type Line, useLrcPlay, useLrcSet } from '@/plugins/lyric'
+import { BlurView } from '@react-native-community/blur'
 import { createStyle } from '@/utils/tools'
 import { updateSetting } from '@/core/common'
 import { useTheme } from '@/store/theme/hook'
@@ -120,44 +121,65 @@ const LrcLine = memo(
       onPress(lineNum)
     }, [onPress, lineNum])
 
+    // 景深模糊：当前行清晰，非当前行按距离加大模糊（Apple Music 风格）
+    const blurAmount = active ? 0 : distance <= 1 ? 4 : 8
+
+    const lineContent = (
+      <>
+        <AnimatedColorText
+          style={{
+            ...styles.lineText,
+            textAlign,
+            lineHeight,
+            fontSize: animatedSize,
+          }}
+          textBreakStrategy="simple"
+          color={colors[0]}
+          opacity={opacity}
+          size={size}
+        >
+          {line.text}
+        </AnimatedColorText>
+        {line.extendedLyrics.map((lrc, index) => {
+          return (
+            <AnimatedColorText
+              style={{
+                ...styles.lineTranslationText,
+                textAlign,
+                lineHeight: translationLineHeight,
+              }}
+              textBreakStrategy="simple"
+              key={index}
+              color={colors[1]}
+              opacity={opacity}
+              size={size * translationScale}
+            >
+              {lrc}
+            </AnimatedColorText>
+          )
+        })}
+      </>
+    )
+
     // textBreakStrategy="simple" 用于解决某些设备上字体被截断的问题
     // https://stackoverflow.com/a/72822360
     return (
       <TouchableOpacity activeOpacity={0.7} onPress={handlePress}>
-        <View style={styles.line} onLayout={handleLayout}>
-          <AnimatedColorText
-            style={{
-              ...styles.lineText,
-              textAlign,
-              lineHeight,
-              fontSize: animatedSize,
-            }}
-            textBreakStrategy="simple"
-            color={colors[0]}
-            opacity={opacity}
-            size={size}
+        {active ? (
+          <View style={styles.line} onLayout={handleLayout}>
+            {lineContent}
+          </View>
+        ) : (
+          <BlurView
+            style={styles.line}
+            onLayout={handleLayout}
+            blurType={theme.isDark ? 'dark' : 'light'}
+            blurAmount={blurAmount}
+            overlayColor="transparent"
           >
-            {line.text}
-          </AnimatedColorText>
-          {line.extendedLyrics.map((lrc, index) => {
-            return (
-              <AnimatedColorText
-                style={{
-                  ...styles.lineTranslationText,
-                  textAlign,
-                  lineHeight: translationLineHeight,
-                }}
-                textBreakStrategy="simple"
-                key={index}
-                color={colors[1]}
-                opacity={opacity}
-                size={size * translationScale}
-              >
-                {lrc}
-              </AnimatedColorText>
-            )
-          })}
-        </View>
+            {lineContent}
+          </BlurView>
+        )}
       </TouchableOpacity>
     )
   },
