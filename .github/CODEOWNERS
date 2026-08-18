@@ -1,0 +1,37 @@
+# LX Music Pro CODEOWNERS
+# 每个文件/文件夹的"主人"——改文件时自动请求 owner review
+# 匹配规则:最后一个匹配的规则生效;没匹配到任何规则的文件不需要 review
+
+# 琥珀(核心:统计+AI)
+/src/core/player/stats.ts          @AsrnkHoper
+/src/core/stats/                    @AsrnkHoper
+/src/core/init/player/stats.ts     @AsrnkHoper
+/src/core/player/stats.ts          @AsrnkHoper
+
+# 琥珀的策划文档(保护)
+/docs/hoper/                        @AsrnkHoper
+
+# 开发者 A(UI/前端)
+/src/screens/Home/Views/            @developerA
+/src/components/common/             @developerA
+
+# 开发者 B(播放/音频)
+/src/core/player/                   @developerB
+/src/plugins/lyric.ts              @developerB
+
+# 开发者 C(设置/配置)
+/src/screens/Home/Views/Setting/    @developerC
+/src/config/                        @developerC
+
+# CI/发布(谁管 CI 谁负责)
+/.github/workflows/                 @developerD
+/tools/                             @developerD
+
+# 代码兜底保护:未匹配到上面规则的代码文件,默认琥珀 review
+*                                   @AsrnkHoper
+
+# ⚠️ docs/ 目录说明:
+# - docs/hoper/     → 琥珀文档,需琥珀 review(已配)
+# - docs/你的名字/  → 你的文档,你自由编辑,不需要 review(因为 * 规则只匹配代码)
+# 注意:GitHub 的 CODEOWNERS 通配符 * 只匹配仓库根目录下的文件和目录,
+# 所以 docs/下的子目录不会被 * 匹配到——队友可以自由编辑自己的文档目录
