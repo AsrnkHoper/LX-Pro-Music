@@ -8,6 +8,7 @@ import SettingVolume from './settings/SettingVolume'
 import SettingPlaybackRate from './settings/SettingPlaybackRate'
 import SettingLrcFontSize from './settings/SettingLrcFontSize'
 import SettingLrcAlign from './settings/SettingLrcAlign'
+import SettingLyricBlur from './settings/SettingLyricBlur'
 import SettingCoverSpin from "@/screens/PlayDetail/components/SettingPopup/settings/SettingCoverSpin.tsx";
 
 export interface SettingPopupProps extends Omit<PopupProps, 'children'> {
@@ -45,6 +46,7 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
           <SettingPlaybackRate />
           <SettingLrcFontSize direction={direction} />
           <SettingLrcAlign />
+          <SettingLyricBlur />
           <SettingCoverSpin />
         </View>
       </ScrollView>

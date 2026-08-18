@@ -208,6 +208,8 @@
   "play_detail_setting_playback_rate": "播放速率",
   "play_detail_setting_playback_rate_reset": "重置",
   "play_detail_setting_show_lyric_progress_setting": "允许通过拖拽歌词调整播放进度",
+  "play_detail_setting_lyric_blur": "歌词视图模糊",
+  "play_detail_setting_lyric_blur_tip": "仅支持 Android 12 及更新系统版本",
   "play_detail_setting_title": "播放器设置",
   "play_detail_setting_volume": "音量大小",
   "play_detail_todo_tip": "你想干嘛？不可以的，这个功能还没有实现哦😛，不过你可以试着长按来定位当前播放的歌曲（仅对播放「我的列表」里的歌曲有效哦）",

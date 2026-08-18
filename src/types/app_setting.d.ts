@@ -227,6 +227,10 @@ declare global {
        * 播放详情页-歌词对齐方式
        */
       'playDetail.style.align': 'center' | 'left' | 'right'
+      /**
+       * 歌词视图模糊（景深效果，仅 Android 12+ 真模糊）
+       */
+      'playDetail.style.lyricBlur': boolean
 
       'playDetail.isCoverSpin': boolean
       /**

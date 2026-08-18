@@ -70,6 +70,7 @@ const defaultSetting: LX.AppSetting = {
 
   'playDetail.isCoverSpin': true,
   'playDetail.style.align': 'center',
+  'playDetail.style.lyricBlur': true,
   'playDetail.vertical.style.lrcFontSize': 200,
   'playDetail.horizontal.style.lrcFontSize': 220,
   'playDetail.landscapeImmersion.style.lrcFontSize': 240,

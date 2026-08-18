@@ -208,6 +208,8 @@
   "play_detail_setting_playback_rate": "Playback Rate",
   "play_detail_setting_playback_rate_reset": "Reset",
   "play_detail_setting_show_lyric_progress_setting": "Allow to adjust playback progress by drag-and-drop lyrics",
+  "play_detail_setting_lyric_blur": "Lyric blur",
+  "play_detail_setting_lyric_blur_tip": "Only available on Android 12 and newer",
   "play_detail_setting_title": "Player Options",
   "play_detail_setting_volume": "Volume",
   "play_detail_todo_tip": "What do you want? No, this function has not been implemented yet 😛, But you can try to locate the currently playing song by long pressing (Only valid for playing songs in \"Your Library\")",
