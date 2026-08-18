@@ -63,17 +63,6 @@ src/
 
 ---
 
-## 🔑 GitHub Token 信息
-
-| 项目 | 信息 |
-|------|------|
-| Token 位置 | /sdcard/Download/GITHUB_TOKEN.txt |
-| 用途 | GitHub API / git push 接力开发 |
-| 记录时间 | 2026-08-15 |
-
-> ⚠️ 重要：后续 Agent 接手时，请从本地文件 /sdcard/Download/GITHUB_TOKEN.txt 读取 Token。
-> 不要把 Token 写入仓库任何文件！GitHub secret scanning 会拒绝包含 Token 的提交。
-
 ---
 
 ## 🕐 开发记录
@@ -222,22 +211,4 @@ src/
 
 **验证**：`npx tsc --noEmit` 基线 252 条，修复后 252 条，零新增
 
----
 
-### 2026-08-18 - binsys盘查报告
-
-**问题**：
-1. 下载队列在大量任务时存在递归风险，极端场景下可能导致崩溃
-2. 播放停止后状态残留，出现幽灵播放现象
-3. 网络请求超时处理不统一，偶发请求失败体验不稳定
-4. 播放地址失效时无自动容错，单首歌卡住影响连续播放
-5. WebDAV 同步偶发失败后需要手动重试，后台同步中断
-
-**修复**：
-1. `src/core/download.ts`：调整下载队列处理逻辑，避免递归栈溢出
-2. `src/core/player/player.ts`：修复停止状态残留问题
-3. `src/utils/request.js`：统一网络超时与错误处理，移除调试输出
-4. `src/core/player/player.ts`：播放取地址失败时自动重试，仍失败则跳过当前歌曲
-5. `src/core/sync/webdavSync.ts`：同步失败后自动重试，减少手动操作
-
-**验证**：构建并安装后启动正常，播放与同步场景已可用
