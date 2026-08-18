@@ -45,7 +45,7 @@ jobs:
                  app/build/ASSETS \
                  app/build/generated/autolinking \
                  app/build/generated/res/react
-          ./gradlew assembleDebug --no-configuration-cache --console=plain -PreactNativeArchitectures=arm64-v8a
+          ./gradlew assembleDebug --no-daemon --no-configuration-cache --console=plain -PreactNativeArchitectures=arm64-v8a
           echo "=== bundle 产物检查 ==="
           find app/build -name "index.android.bundle" -exec ls -la {} \;
 
