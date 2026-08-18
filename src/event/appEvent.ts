@@ -176,6 +176,10 @@ export class AppEvent extends Event {
     this.emit('playHistoryUpdated')
   }
 
+  statsUpdated() {
+    this.emit('statsUpdated')
+  }
+
   changeMenuVisible(visible: boolean) {
     this.emit('changeMenuVisible', visible)
   }

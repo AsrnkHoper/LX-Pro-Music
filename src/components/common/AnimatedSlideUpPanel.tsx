@@ -1,5 +1,5 @@
 import React, {forwardRef, useImperativeHandle, useRef, useEffect, useCallback, useState} from 'react';
-import { Animated, View, StyleSheet, TouchableWithoutFeedback, BackHandler } from 'react-native';
+import { Animated, View, StyleSheet, TouchableWithoutFeedback, BackHandler, type DimensionValue } from 'react-native';
 import { useWindowSize } from '@/utils/hooks';
 
 export interface AnimatedSlideUpPanelType {
@@ -9,9 +9,11 @@ export interface AnimatedSlideUpPanelType {
 interface Props {
   children: React.ReactNode;
   onHide?: () => void;
+  /** 面板高度，默认 '50%'（StoryFlow 详情可传 '70%'） */
+  height?: DimensionValue;
 }
 
-const AnimatedSlideUpPanel = forwardRef<AnimatedSlideUpPanelType, Props>(({ children, onHide }, ref) => {
+const AnimatedSlideUpPanel = forwardRef<AnimatedSlideUpPanelType, Props>(({ children, onHide, height = '50%' as DimensionValue }, ref) => {
   const { height: windowHeight } = useWindowSize();
   const [isVisible, setIsVisible] = useState(false);
   const animatedValue = useRef(new Animated.Value(windowHeight)).current;
@@ -20,7 +22,7 @@ const AnimatedSlideUpPanel = forwardRef<AnimatedSlideUpPanelType, Props>(({ chil
     setIsVisible(true);
     Animated.timing(animatedValue, {
       toValue: 0,
-      duration: 0,
+      duration: 300,
       useNativeDriver: true,
     }).start();
   }, [animatedValue]);
@@ -28,7 +30,7 @@ const AnimatedSlideUpPanel = forwardRef<AnimatedSlideUpPanelType, Props>(({ chil
   const hide = useCallback(() => {
     Animated.timing(animatedValue, {
       toValue: windowHeight,
-      duration: 0,
+      duration: 250,
       useNativeDriver: true,
     }).start(() => {
       setIsVisible(false);
@@ -81,9 +83,7 @@ const AnimatedSlideUpPanel = forwardRef<AnimatedSlideUpPanelType, Props>(({ chil
       <Animated.View
         style={[
           styles.panel,
-          {
-            transform: [{ translateY: animatedValue }],
-          },
+          { height, transform: [{ translateY: animatedValue }] },
         ]}
       >
         {children}
@@ -98,7 +98,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
   },
 });
 

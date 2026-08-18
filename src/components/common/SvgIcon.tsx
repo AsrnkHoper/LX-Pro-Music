@@ -145,6 +145,19 @@ const FolderIcon = ({ size, color }: { size: number; color: string }) => (
   </Svg>
 )
 
+/**
+ * 统计图标 - 用于听歌统计
+ * 简洁的柱状图 + 趋势线
+ */
+const StatsIcon = ({ size, color }: { size: number; color: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="4" y="12" width="3" height="8" rx="1" fill={color} />
+    <Rect x="10" y="8" width="3" height="12" rx="1" fill={color} />
+    <Rect x="16" y="4" width="3" height="16" rx="1" fill={color} />
+    <Path d="M3 21h18" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+  </Svg>
+)
+
 export const SvgIcon = memo(({ name, size = 15, rawSize, color = '#000', style }: SvgIconProps) => {
   const finalSize = rawSize ?? scaleSizeW(size)
 
@@ -166,6 +179,8 @@ export const SvgIcon = memo(({ name, size = 15, rawSize, color = '#000', style }
         return <FolderIcon size={finalSize} color={color} />
       case 'music-list':
         return <MusicListIcon size={finalSize} color={color} />
+      case 'stats':
+        return <StatsIcon size={finalSize} color={color} />
       case 'landscape-immersion':
         return <LandscapeImmersionIcon size={finalSize} color={color} />
       default:

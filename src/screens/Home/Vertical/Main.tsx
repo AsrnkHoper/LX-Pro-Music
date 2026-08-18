@@ -14,6 +14,7 @@ import PagerView, {
 import { setNavActiveId } from '@/core/common'
 import settingState from '@/store/setting/state'
 import DailyRec from '../Views/DailyRec'
+import Stats from '../Views/Stats'
 import MyPlaylist from '../Views/MyPlaylist'
 import FollowedArtists from '../Views/FollowedArtists'
 import SubscribedAlbums from '../Views/SubscribedAlbums';
@@ -191,6 +192,42 @@ const DailyRecPage = () => {
       global.state_event.off('themeUpdated', handleHide)
       global.state_event.off('languageChanged', handleHide)
       global.state_event.on('configUpdated', handleConfigUpdated)
+    }
+  }, [])
+
+  return visible ? component : null
+}
+
+const StatsPage = () => {
+  const [visible, setVisible] = useState(commonState.navActiveId == 'nav_stats')
+  const component = useMemo(() => <Stats />, [])
+  useEffect(() => {
+    let currentId: CommonState['navActiveId'] = commonState.navActiveId
+    const handleNavIdUpdate = (id: CommonState['navActiveId']) => {
+      currentId = id
+      if (id == 'nav_stats') {
+        requestAnimationFrame(() => {
+          setVisible(true)
+        })
+      }
+    }
+    const handleHide = () => {
+      if (currentId != 'nav_setting') return
+      setVisible(false)
+    }
+    const handleConfigUpdated = (keys: Array<keyof LX.AppSetting>) => {
+      if (keys.some((k) => hideKeys.includes(k))) handleHide()
+    }
+    global.state_event.on('navActiveIdUpdated', handleNavIdUpdate)
+    global.state_event.on('themeUpdated', handleHide)
+    global.state_event.on('languageChanged', handleHide)
+    global.state_event.on('configUpdated', handleConfigUpdated)
+
+    return () => {
+      global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
+      global.state_event.off('themeUpdated', handleHide)
+      global.state_event.off('languageChanged', handleHide)
+      global.state_event.off('configUpdated', handleConfigUpdated)
     }
   }, [])
 
@@ -556,6 +593,7 @@ const Main = () => {
       nav_top: <LeaderboardPage />,
       nav_love: <MylistPage />,
       nav_daily_rec: <DailyRecPage />,
+      nav_stats: <StatsPage />,
       nav_followed_artists: <FollowedArtistsPage />,
       nav_subscribed_albums: <SubscribedAlbumsPage />,
       nav_my_playlist: <MyPlaylistPage />,
