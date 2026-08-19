@@ -9,7 +9,7 @@ import { createStyle, toast } from '@/utils/tools'
 import InputItem from '@/screens/Home/Views/Setting/components/InputItem'
 import Button from '@/screens/Home/Views/Setting/components/Button'
 import { AI_PROVIDERS, AI_TONES, testAiConnection } from '@/core/stats/ai'
-import { generateWeeklyReport, readCachedReport } from '@/core/stats/report'
+import { deleteReportFromArchive, generateWeeklyReport, getReportArchive, readCachedReport, type ArchiveItem } from '@/core/stats/report'
 import type { AiReportV2 } from '@/core/stats/schema'
 
 const AiReportSection = memo(() => {
@@ -23,7 +23,14 @@ const AiReportSection = memo(() => {
   const [genLoading, setGenLoading] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const alertRef = useRef<ConfirmAlertType>(null)
+  const deleteRef = useRef<ConfirmAlertType>(null)
+  const pendingDeleteIdRef = useRef<string | null>(null)
   const [report, setReport] = useState<AiReportV2 | null>(null)
+  const [archive, setArchive] = useState<ArchiveItem[]>([])
+
+  const loadArchive = useCallback(() => {
+    void getReportArchive().then(setArchive)
+  }, [])
 
   const loadCached = useCallback(() => {
     void readCachedReport().then((cached) => {
@@ -33,7 +40,8 @@ const AiReportSection = memo(() => {
 
   useEffect(() => {
     loadCached()
-  }, [loadCached])
+    loadArchive()
+  }, [loadCached, loadArchive])
 
   useEffect(() => {
     if (testResult) alertRef.current?.setVisible(true)
@@ -61,6 +69,7 @@ const AiReportSection = memo(() => {
       .then((res) => {
         if (res.ok) {
           setReport(res.report)
+          loadArchive()
           toast(res.cached ? '已从缓存读取' : '报告生成成功')
         } else {
           toast(res.error, 'long')
@@ -110,6 +119,49 @@ const AiReportSection = memo(() => {
             ))}
           </View>
         ) : null}
+      </View>
+    )
+  }
+
+  const handleDeleteArchive = (id: string) => {
+    pendingDeleteIdRef.current = id
+    deleteRef.current?.setVisible(true)
+  }
+
+  const confirmDeleteArchive = () => {
+    const id = pendingDeleteIdRef.current
+    pendingDeleteIdRef.current = null
+    if (!id) return
+    void deleteReportFromArchive(id).then(() => {
+      deleteRef.current?.setVisible(false)
+      loadArchive()
+      toast('报告已删除')
+    })
+  }
+
+  const renderArchive = () => {
+    if (!archive.length) return null
+    return (
+      <View style={styles.archiveWrap}>
+        <Text size={13} color={theme['c-font']} style={styles.archiveTitle}>历史报告</Text>
+        {archive.map((item) => (
+          <View key={item.id} style={styles.archiveItem}>
+            <TouchableOpacity
+              style={styles.archiveMain}
+              onPress={() => setReport(item.report)}
+            >
+              <Text size={13} color={theme['c-font']} numberOfLines={1}>
+                {item.report.identity?.period_name || `${item.period.start} ~ ${item.period.end}`}
+              </Text>
+              <Text size={11} color={theme['c-500']} numberOfLines={1}>
+                {item.period.start} ~ {item.period.end}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDeleteArchive(item.id)}>
+              <Text size={12} color={theme['c-500']}>删除</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
       </View>
     )
   }
@@ -201,6 +253,7 @@ const AiReportSection = memo(() => {
         </View>
 
         {renderReport()}
+        {renderArchive()}
       </View>
 
       <ConfirmAlert
@@ -211,6 +264,18 @@ const AiReportSection = memo(() => {
         showConfirm={false}
         bgHide={false}
         onCancel={() => setTestResult(null)}
+      />
+      <ConfirmAlert
+        ref={deleteRef}
+        title="删除报告"
+        text="确定删除这份历史报告吗?删除后不可恢复。"
+        cancelText="取消"
+        confirmText="删除"
+        bgHide={false}
+        onConfirm={confirmDeleteArchive}
+        onCancel={() => {
+          pendingDeleteIdRef.current = null
+        }}
       />
     </View>
   )
@@ -302,6 +367,22 @@ const styles = createStyle({
   },
   insightItem: {
     lineHeight: 18,
+  },
+  archiveWrap: {
+    marginTop: 12,
+  },
+  archiveTitle: {
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  archiveItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  archiveMain: {
+    flex: 1,
+    marginRight: 8,
   },
 })
 

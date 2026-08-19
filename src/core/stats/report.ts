@@ -174,9 +174,21 @@ export const readCachedReport = async (): Promise<AiReportV2 | null> => {
   return cached?.report ?? null
 }
 
-export const getReportArchive = async () => {
-  const list = await getData<{ id: string; period: { start: string; end: string }; report: AiReportV2; generatedAt: number }[] | null>(archiveKey)
+export interface ArchiveItem {
+  id: string
+  period: { start: string; end: string }
+  report: AiReportV2
+  generatedAt: number
+}
+
+export const getReportArchive = async (): Promise<ArchiveItem[]> => {
+  const list = await getData<ArchiveItem[] | null>(archiveKey)
   return list ?? []
+}
+
+export const deleteReportFromArchive = async (id: string) => {
+  const list = await getReportArchive()
+  await saveData(archiveKey, list.filter((item) => item.id !== id))
 }
 
 export const generateWeeklyReport = async (force = false): Promise<
