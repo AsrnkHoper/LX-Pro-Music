@@ -1,12 +1,15 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
+import Image from '@/components/common/Image'
+import Badge from '@/components/common/Badge'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
 import { getStatsEvents, getStatsOverview, getStatsTopArtists, getStatsTopSongs } from '@/core/player/stats'
-import { addTempPlayListAndPlay } from '@/core/player/tempPlayList'
+import { playOnlineList } from '@/core/list'
+import { getPlayHistory } from '@/utils/data'
 import { formatDurationFull, formatNumber, getTodayText } from './utils'
 import AiReportSection from './AiReportSection'
 
@@ -18,6 +21,8 @@ const RankItem = memo(
     value,
     valueLabel,
     onPress,
+    detail,
+    showDetail,
   }: {
     rank: number
     title: string
@@ -25,6 +30,14 @@ const RankItem = memo(
     value: string
     valueLabel: string
     onPress?: () => void
+    detail?: {
+      picUrl?: string | null
+      source?: string
+      quality?: string
+      interval?: string | null
+      album?: string
+    }
+    showDetail?: boolean
   }) => {
     const theme = useTheme()
     const rankColor =
@@ -34,12 +47,33 @@ const RankItem = memo(
         <View style={[styles.rankBadge, { backgroundColor: rankColor }]}>
           <Text size={12} color="#fff" style={styles.rankBadgeText}>{rank}</Text>
         </View>
-        <View style={styles.rankMain}>
-          <Text size={14} color={theme['c-font']} numberOfLines={1}>{title}</Text>
-          {subtitle ? (
-            <Text size={11} color={theme['c-500']} numberOfLines={1}>{subtitle}</Text>
-          ) : null}
-        </View>
+        {showDetail && detail ? (
+          <>
+            <Image url={detail.picUrl} style={styles.rankCover} />
+            <View style={styles.rankMain}>
+              <View style={styles.rankTitleRow}>
+                <Text size={14} color={theme['c-font']} numberOfLines={1} style={styles.rankTitleText}>{title}</Text>
+                {detail.source ? <Badge type="tertiary">{detail.source.toUpperCase()}</Badge> : null}
+                {detail.quality ? <Badge type="hq">{detail.quality}</Badge> : null}
+              </View>
+              <Text size={11} color={theme['c-500']} numberOfLines={1}>
+                {subtitle}{detail.album ? ` · ${detail.album}` : ''}
+              </Text>
+              <Text size={11} color={theme['c-500']} numberOfLines={1}>
+                {detail.interval ? `${detail.interval} · ` : ''}播放 {value} 次
+              </Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.rankMain}>
+              <Text size={14} color={theme['c-font']} numberOfLines={1}>{title}</Text>
+              {subtitle ? (
+                <Text size={11} color={theme['c-500']} numberOfLines={1}>{subtitle}</Text>
+              ) : null}
+            </View>
+          </>
+        )}
         <View style={styles.rankValue}>
           <Text size={14} color={theme['c-primary']} style={styles.rankValueText}>{value}</Text>
           <Text size={10} color={theme['c-500']}>{valueLabel}</Text>
@@ -55,6 +89,15 @@ const Stats = memo(() => {
   const [topSongs, setTopSongs] = useState<LX.Stats.SongItem[]>([])
   const [topArtists, setTopArtists] = useState<Array<{ singer: string; plays: number; duration: number }>>([])
   const [selectedDate, setSelectedDate] = useState(getTodayText())
+  const [showDetail, setShowDetail] = useState(false)
+  const [detailMap, setDetailMap] = useState<Record<string, {
+    picUrl?: string | null
+    source?: string
+    quality?: string
+    interval?: string | null
+    album?: string
+    musicInfo?: LX.Music.MusicInfo
+  }>>({})
 
   const loadAll = useCallback(() => {
     void Promise.all([getStatsOverview(), getStatsTopSongs(10), getStatsTopArtists(10)]).then(
@@ -71,6 +114,50 @@ const Stats = memo(() => {
   }, [loadAll])
 
   useEffect(() => {
+    const buildDetailMap = async () => {
+      const map: Record<string, any> = {}
+      try {
+        const events = await getStatsEvents()
+        for (const event of events) {
+          const info = event.musicInfo as LX.Music.MusicInfoOnline
+          if (!info?.id || map[info.id]) continue
+          const meta = info.meta || {}
+          map[info.id] = {
+            picUrl: meta.picUrl ?? (meta as any).picUrl,
+            source: info.source,
+            quality: meta._qualitys ? Object.keys(meta._qualitys).find((q) => meta._qualitys[q as LX.Quality]) : undefined,
+            interval: info.interval,
+            album: meta.albumName,
+            musicInfo: info,
+          }
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        const history = await getPlayHistory()
+        for (const item of history) {
+          const info = item.musicInfo as LX.Music.MusicInfoOnline
+          if (!info?.id || map[info.id]) continue
+          const meta = info.meta || {}
+          map[info.id] = {
+            picUrl: meta.picUrl ?? (meta as any).picUrl,
+            source: info.source,
+            quality: meta._qualitys ? Object.keys(meta._qualitys).find((q) => meta._qualitys[q as LX.Quality]) : undefined,
+            interval: info.interval,
+            album: meta.albumName,
+            musicInfo: info,
+          }
+        }
+      } catch {
+        // ignore
+      }
+      setDetailMap(map)
+    }
+    void buildDetailMap()
+  }, [topSongs])
+
+  useEffect(() => {
     const handleStatsUpdated = () => loadAll()
     global.app_event.on('statsUpdated', handleStatsUpdated)
     return () => {
@@ -78,34 +165,23 @@ const Stats = memo(() => {
     }
   }, [loadAll])
 
-  const handlePlaySong = useCallback(async (song: LX.Stats.SongItem) => {
-    let musicInfo: LX.Music.MusicInfo | null = null
-    try {
-      const events = await getStatsEvents()
-      for (let i = events.length - 1; i >= 0; i--) {
-        if (events[i].musicInfo?.id === song.id) {
-          musicInfo = events[i].musicInfo
-          break
-        }
-      }
-    } catch {
-      // ignore
-    }
-    if (!musicInfo) {
-      musicInfo = {
-        id: song.id,
-        name: song.name,
-        singer: song.singer,
-        source: 'kw',
-        interval: null,
-        meta: {
-          songId: song.id,
-          albumName: song.album || '',
-        },
-      } as LX.Music.MusicInfo
-    }
-    addTempPlayListAndPlay([{ listId: null, musicInfo }])
-  }, [])
+  const handlePlaySong = useCallback((song: LX.Stats.SongItem) => {
+    const detail = detailMap[song.id]
+    const musicInfo = (detail?.musicInfo as LX.Music.MusicInfoOnline) ?? ({
+      id: song.id,
+      name: song.name,
+      singer: song.singer,
+      source: 'kw',
+      interval: null,
+      meta: {
+        songId: song.id,
+        albumName: song.album || '',
+        qualitys: [],
+        _qualitys: {},
+      },
+    } as LX.Music.MusicInfoOnline)
+    void playOnlineList('stats_ranking', [musicInfo], 0)
+  }, [detailMap])
 
   const rankSongs = useMemo(
     () =>
@@ -115,8 +191,9 @@ const Stats = memo(() => {
         subtitle: item.singer,
         value: `${item.plays}`,
         valueLabel: '次',
+        detail: detailMap[item.id],
       })),
-    [topSongs]
+    [topSongs, detailMap]
   )
 
   const rankArtists = useMemo(
@@ -177,13 +254,21 @@ const Stats = memo(() => {
         {/* 歌曲排行 */}
         <View style={styles.sectionHeader}>
           <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>歌曲排行</Text>
+          <TouchableOpacity onPress={() => setShowDetail((v) => !v)} style={styles.detailToggle}>
+            <Text size={11} color={theme['c-primary']}>{showDetail ? '简洁' : '详细'}</Text>
+          </TouchableOpacity>
         </View>
         <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
           {rankSongs.length === 0 ? (
             <Text size={12} color={theme['c-500']} style={styles.empty}>听歌后这里会出现你的年度最爱</Text>
           ) : (
             rankSongs.map((item, index) => (
-              <RankItem key={`song_${item.rank}`} {...item} onPress={() => void handlePlaySong(topSongs[index])} />
+              <RankItem
+                key={`song_${item.rank}`}
+                {...item}
+                showDetail={showDetail}
+                onPress={() => handlePlaySong(topSongs[index])}
+              />
             ))
           )}
         </View>
@@ -295,6 +380,26 @@ const styles = createStyle({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  rankCover: {
+    width: 42,
+    height: 42,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  rankTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rankTitleText: {
+    flexShrink: 1,
+  },
+  detailToggle: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(77,175,124,0.12)',
   },
   rankBadgeText: {
     fontWeight: '800',

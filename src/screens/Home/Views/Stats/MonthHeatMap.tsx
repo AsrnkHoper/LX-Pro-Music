@@ -1,6 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
+import Image from '@/components/common/Image'
+import Badge from '@/components/common/Badge'
 import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
 import { useTheme } from '@/store/theme/hook'
 import { useWindowSize } from '@/utils/hooks'
@@ -39,6 +41,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
   const [maxMonthDuration, setMaxMonthDuration] = useState(0)
   const [dayEvents, setDayEvents] = useState<LX.Stats.EventItem[]>([])
   const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null)
+  const [showDetail, setShowDetail] = useState(false)
   const deleteConfirmRef = useRef<ConfirmAlertType>(null)
 
   const pagePadding = 16
@@ -141,39 +144,76 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
         </Text>
       )
     }
-    return dayEvents.slice(0, 8).map((event, index) => (
-      <TouchableOpacity
-        key={event.id || `${event.playedAt}_${index}`}
-        style={styles.eventRow}
-        onPress={() => addTempPlayListAndPlay([{ listId: null, musicInfo: event.musicInfo }])}
-      >
-        <View style={styles.eventIndex}>
-          <Text size={11} color={theme['c-500']}>{index + 1}</Text>
-        </View>
-        <View style={styles.eventMain}>
-          <Text size={13} color={theme['c-font']} numberOfLines={1}>
-            {event.musicInfo.name}
-          </Text>
-          <Text size={11} color={theme['c-500']} numberOfLines={1}>
-            {event.musicInfo.singer}
-          </Text>
-        </View>
-        <Text size={11} color={theme['c-primary']}>
-          {formatDurationFull(event.playTime)}
-        </Text>
-      </TouchableOpacity>
-    ))
+    return dayEvents.slice(0, 8).map((event, index) => {
+      const info = event.musicInfo
+      const qualitys = (info as LX.Music.MusicInfoOnline).meta?._qualitys
+      const quality = qualitys && Object.keys(qualitys).find((q) => qualitys[q as LX.Quality])
+      return (
+        <TouchableOpacity
+          key={event.id || `${event.playedAt}_${index}`}
+          style={styles.eventRow}
+          onPress={() => addTempPlayListAndPlay([{ listId: null, musicInfo: info }])}
+        >
+          {showDetail ? (
+            <>
+              <Image
+                url={(info.meta as any)?.picUrl}
+                style={styles.eventCover}
+              />
+              <View style={styles.eventMain}>
+                <View style={styles.eventTitleRow}>
+                  <Text size={13} color={theme['c-font']} numberOfLines={1} style={styles.eventName}>
+                    {info.name}
+                  </Text>
+                  <Badge type="tertiary">{info.source?.toUpperCase?.()}</Badge>
+                  {quality ? <Badge type="hq">{quality}</Badge> : null}
+                </View>
+                <Text size={11} color={theme['c-500']} numberOfLines={1}>
+                  {info.singer} · {(info.meta as any)?.albumName || ''}
+                </Text>
+                <Text size={11} color={theme['c-500']} numberOfLines={1}>
+                  {formatDurationFull(event.playTime)} · {info.interval || ''}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.eventIndex}>
+                <Text size={11} color={theme['c-500']}>{index + 1}</Text>
+              </View>
+              <View style={styles.eventMain}>
+                <Text size={13} color={theme['c-font']} numberOfLines={1}>
+                  {info.name}
+                </Text>
+                <Text size={11} color={theme['c-500']} numberOfLines={1}>
+                  {info.singer}
+                </Text>
+              </View>
+              <Text size={11} color={theme['c-primary']}>
+                {formatDurationFull(event.playTime)}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )
+    })
   }
 
   return (
     <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
       <View style={styles.cardHeader}>
+        <TouchableOpacity style={styles.yearBtn} onPress={() => changeMonthBy(-12)}>
+          <Text size={16} color={theme['c-font']}>«</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.monthBtn} onPress={() => changeMonthBy(-1)}>
           <Text size={20} color={theme['c-font']}>‹</Text>
         </TouchableOpacity>
         <Text size={16} color={theme['c-font']} style={styles.monthTitle}>{monthText}</Text>
         <TouchableOpacity style={styles.monthBtn} disabled={!canGoNext} onPress={() => changeMonthBy(1)}>
           <Text size={20} color={canGoNext ? theme['c-font'] : theme['c-300']}>›</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.yearBtn} disabled={!canGoNext} onPress={() => changeMonthBy(12)}>
+          <Text size={16} color={canGoNext ? theme['c-font'] : theme['c-300']}>»</Text>
         </TouchableOpacity>
       </View>
 
@@ -211,7 +251,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
             >
               <Text
                 size={13}
-                color={isSelected ? theme['c-primary'] : duration > 0 ? '#fff' : theme['c-500']}
+                color={isSelected ? (duration > 0 ? '#fff' : theme['c-primary']) : duration > 0 ? '#fff' : theme['c-500']}
                 style={isToday ? styles.todayText : null}
               >
                 {date.getDate()}
@@ -243,9 +283,14 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
           <Text size={14} color={theme['c-primary']} style={styles.selectedDate}>
             {selectedDate || '选择日期'}
           </Text>
-          <Text size={12} color={theme['c-500']}>
-            {selectedDuration > 0 ? formatDurationFull(selectedDuration) : '暂无记录'}
-          </Text>
+          <View style={styles.selectedHeaderRight}>
+            <Text size={12} color={theme['c-500']}>
+              {selectedDuration > 0 ? formatDurationFull(selectedDuration) : '暂无记录'}
+            </Text>
+            <TouchableOpacity onPress={() => setShowDetail((v) => !v)} style={styles.detailToggle}>
+              <Text size={11} color={theme['c-primary']}>{showDetail ? '简洁' : '详细'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         {renderDayEvents()}
       </View>
@@ -276,7 +321,13 @@ const styles = createStyle({
     marginBottom: 12,
   },
   monthBtn: {
-    width: 40,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  yearBtn: {
+    width: 32,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
@@ -331,6 +382,17 @@ const styles = createStyle({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
+  selectedHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  detailToggle: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(77,175,124,0.12)',
+  },
   selectedDate: {
     fontWeight: '700',
   },
@@ -342,6 +404,20 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
+  },
+  eventCover: {
+    width: 42,
+    height: 42,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  eventTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  eventName: {
+    flexShrink: 1,
   },
   eventIndex: {
     width: 22,
