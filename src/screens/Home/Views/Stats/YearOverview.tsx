@@ -4,7 +4,7 @@ import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import { getStatsDailyByRange, getStatsOverview } from '@/core/player/stats'
-import { formatDurationFull } from './utils'
+import { formatDurationFull, getHeatColor, getMonthDays, getTodayText, WEEK_LABELS } from './utils'
 
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
@@ -15,18 +15,23 @@ const YearOverview = memo(() => {
   const theme = useTheme()
   const year = new Date().getFullYear()
   const [monthDurations, setMonthDurations] = useState<number[]>(new Array(12).fill(0))
+  const [dayDurations, setDayDurations] = useState<Map<string, number>>(new Map())
   const [yearOverview, setYearOverview] = useState<LX.Stats.Overview>({ totalPlays: 0, totalDuration: 0, activeDays: 0 })
+  const [viewMode, setViewMode] = useState<'bar' | 'heat'>('bar')
 
   const loadYear = useCallback(() => {
     const start = new Date(year, 0, 1).getTime()
     const end = new Date(year + 1, 0, 1).getTime() - 1
     void getStatsDailyByRange(start, end).then((daily) => {
       const durations = new Array(12).fill(0)
+      const dayMap = new Map<string, number>()
       for (const item of daily) {
         const month = Number(item.date.slice(5, 7)) - 1
         if (month >= 0 && month < 12) durations[month] += item.duration
+        dayMap.set(item.date, item.duration)
       }
       setMonthDurations(durations)
+      setDayDurations(dayMap)
     })
     void getStatsOverview(start, end).then(setYearOverview)
   }, [year])
@@ -44,6 +49,8 @@ const YearOverview = memo(() => {
   }, [loadYear])
 
   const maxMonthDuration = useMemo(() => Math.max(1, ...monthDurations), [monthDurations])
+  const maxDayDuration = useMemo(() => Math.max(1, ...Array.from(dayDurations.values())), [dayDurations])
+  const todayText = getTodayText()
 
   return (
     <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
@@ -57,6 +64,22 @@ const YearOverview = memo(() => {
         </View>
       </View>
 
+      <View style={styles.viewSwitch}>
+        <TouchableOpacity
+          style={[styles.viewSwitchBtn, viewMode === 'bar' && { backgroundColor: theme['c-primary-alpha-900'] }]}
+          onPress={() => setViewMode('bar')}
+        >
+          <Text size={12} color={viewMode === 'bar' ? theme['c-primary'] : theme['c-500']}>条形</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.viewSwitchBtn, viewMode === 'heat' && { backgroundColor: theme['c-primary-alpha-900'] }]}
+          onPress={() => setViewMode('heat')}
+        >
+          <Text size={12} color={viewMode === 'heat' ? theme['c-primary'] : theme['c-500']}>热力</Text>
+        </TouchableOpacity>
+      </View>
+
+      {viewMode === 'bar' ? (
       <View style={styles.bars}>
         {monthDurations.map((duration, index) => {
           const ratio = duration / maxMonthDuration
@@ -81,6 +104,43 @@ const YearOverview = memo(() => {
           )
         })}
       </View>
+      ) : (
+      <View style={styles.heatGrid}>
+        {MONTH_NAMES.map((monthName, monthIndex) => {
+          const monthDate = new Date(year, monthIndex, 1)
+          const days = getMonthDays(monthDate)
+          return (
+            <View key={monthName} style={styles.heatMonthCard}>
+              <Text size={11} color={theme['c-font']} style={styles.heatMonthTitle}>{monthName}</Text>
+              <View style={styles.heatWeekRow}>
+                {WEEK_LABELS.map((label) => (
+                  <Text key={label} size={8} color={theme['c-500']} style={styles.heatWeekLabel}>{label}</Text>
+                ))}
+              </View>
+              <View style={styles.heatDayGrid}>
+                {days.map(({ dateText, isCurrentMonth }) => {
+                  const duration = dayDurations.get(dateText) ?? 0
+                  const isToday = dateText === todayText
+                  return (
+                    <View
+                      key={dateText}
+                      style={[
+                        styles.heatDayCell,
+                        {
+                          backgroundColor: isCurrentMonth ? getHeatColor(duration, maxDayDuration) : 'transparent',
+                          borderColor: isToday ? theme['c-primary'] : 'transparent',
+                          borderWidth: isToday ? 1 : 0,
+                        },
+                      ]}
+                    />
+                  )
+                })}
+              </View>
+            </View>
+          )
+        })}
+      </View>
+      )}
     </View>
   )
 })
@@ -130,6 +190,47 @@ const styles = createStyle({
   },
   barLabel: {
     textAlign: 'center',
+  },
+  viewSwitch: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  viewSwitchBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 14,
+  },
+  heatGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  heatMonthCard: {
+    width: '47%',
+    flexGrow: 1,
+  },
+  heatMonthTitle: {
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  heatWeekRow: {
+    flexDirection: 'row',
+    marginBottom: 2,
+  },
+  heatWeekLabel: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  heatDayGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+  },
+  heatDayCell: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
   },
 })
 
