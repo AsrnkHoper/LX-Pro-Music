@@ -1,4 +1,4 @@
-# LX Music Pro
+# LX-Pro Music
 
 > 基于 React Native 的音乐软件 —— **懂你的、专业的、漂亮的音乐伙伴。**
 > 站在巨人肩膀上,但不止于"代替"大厂音乐软件。
