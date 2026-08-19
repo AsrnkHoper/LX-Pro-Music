@@ -21,6 +21,7 @@ import {
   getStatsDailyByRange,
   getStatsEventsByDay,
 } from '@/core/player/stats'
+import { addTempPlayListAndPlay } from '@/core/player/tempPlayList'
 
 interface Props {
   selectedDate: string
@@ -141,7 +142,11 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
       )
     }
     return dayEvents.slice(0, 8).map((event, index) => (
-      <View key={event.id || `${event.playedAt}_${index}`} style={styles.eventRow}>
+      <TouchableOpacity
+        key={event.id || `${event.playedAt}_${index}`}
+        style={styles.eventRow}
+        onPress={() => addTempPlayListAndPlay([{ listId: null, musicInfo: event.musicInfo }])}
+      >
         <View style={styles.eventIndex}>
           <Text size={11} color={theme['c-500']}>{index + 1}</Text>
         </View>
@@ -156,7 +161,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
         <Text size={11} color={theme['c-primary']}>
           {formatDurationFull(event.playTime)}
         </Text>
-      </View>
+      </TouchableOpacity>
     ))
   }
 

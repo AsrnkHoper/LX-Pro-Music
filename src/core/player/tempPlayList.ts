@@ -10,6 +10,15 @@ export const addTempPlayList = (list: LX.Player.TempPlayListItem[]) => {
   playerActions.addTempPlayList(list)
   if (!playerState.playMusicInfo.musicInfo) void playNext()
 }
+
+/**
+ * 加入稍后播放列表并立即切歌。
+ * 与 addTempPlayList 不同:无论当前是否在播,都切到刚插入的歌。
+ */
+export const addTempPlayListAndPlay = (list: LX.Player.TempPlayListItem[]) => {
+  playerActions.addTempPlayList(list.map(({ isTop, ...item }) => ({ ...item, isTop: true })))
+  void playNext()
+}
 /**
  * 从稍后播放列表移除歌曲
  * @param index 歌曲位置

@@ -1,11 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { ScrollView, View } from 'react-native'
+import { ScrollView, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
-import { getStatsOverview, getStatsTopArtists, getStatsTopSongs } from '@/core/player/stats'
+import { getStatsEvents, getStatsOverview, getStatsTopArtists, getStatsTopSongs } from '@/core/player/stats'
+import { addTempPlayListAndPlay } from '@/core/player/tempPlayList'
 import { formatDurationFull, formatNumber, getTodayText } from './utils'
 import AiReportSection from './AiReportSection'
 
@@ -16,18 +17,20 @@ const RankItem = memo(
     subtitle,
     value,
     valueLabel,
+    onPress,
   }: {
     rank: number
     title: string
     subtitle: string
     value: string
     valueLabel: string
+    onPress?: () => void
   }) => {
     const theme = useTheme()
     const rankColor =
       rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : rank === 3 ? '#d97706' : 'rgba(128,128,128,0.25)'
     return (
-      <View style={styles.rankItem}>
+      <TouchableOpacity style={styles.rankItem} onPress={onPress} activeOpacity={0.7} disabled={!onPress}>
         <View style={[styles.rankBadge, { backgroundColor: rankColor }]}>
           <Text size={12} color="#fff" style={styles.rankBadgeText}>{rank}</Text>
         </View>
@@ -41,7 +44,7 @@ const RankItem = memo(
           <Text size={14} color={theme['c-primary']} style={styles.rankValueText}>{value}</Text>
           <Text size={10} color={theme['c-500']}>{valueLabel}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     )
   }
 )
@@ -74,6 +77,35 @@ const Stats = memo(() => {
       global.app_event.off('statsUpdated', handleStatsUpdated)
     }
   }, [loadAll])
+
+  const handlePlaySong = useCallback(async (song: LX.Stats.SongItem) => {
+    let musicInfo: LX.Music.MusicInfo | null = null
+    try {
+      const events = await getStatsEvents()
+      for (let i = events.length - 1; i >= 0; i--) {
+        if (events[i].musicInfo?.id === song.id) {
+          musicInfo = events[i].musicInfo
+          break
+        }
+      }
+    } catch {
+      // ignore
+    }
+    if (!musicInfo) {
+      musicInfo = {
+        id: song.id,
+        name: song.name,
+        singer: song.singer,
+        source: 'kw',
+        interval: null,
+        meta: {
+          songId: song.id,
+          albumName: song.album || '',
+        },
+      } as LX.Music.MusicInfo
+    }
+    addTempPlayListAndPlay([{ listId: null, musicInfo }])
+  }, [])
 
   const rankSongs = useMemo(
     () =>
@@ -150,7 +182,9 @@ const Stats = memo(() => {
           {rankSongs.length === 0 ? (
             <Text size={12} color={theme['c-500']} style={styles.empty}>听歌后这里会出现你的年度最爱</Text>
           ) : (
-            rankSongs.map((item) => <RankItem key={`song_${item.rank}`} {...item} />)
+            rankSongs.map((item, index) => (
+              <RankItem key={`song_${item.rank}`} {...item} onPress={() => void handlePlaySong(topSongs[index])} />
+            ))
           )}
         </View>
 
