@@ -301,6 +301,11 @@ export class AppEvent extends Event {
     this.emit('triggerSearch', text)
   }
 
+  /** 听歌统计写入/删除/清空/回填后触发,统计页实时刷新 */
+  statsUpdated() {
+    this.emit('statsUpdated')
+  }
+
   download_list_changed() {
     this.emit('download_list_changed')
   }

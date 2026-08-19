@@ -620,5 +620,6 @@
   "album_detail": "专辑详情",
   "nav_my_playlist": "我的歌单",
   "exit_app_tip_double_press": "再按一次退出应用",
-  "setting_basic_nav_menu": "侧边栏[菜单&横向滚动]排序设置"
+  "setting_basic_nav_menu": "侧边栏[菜单&横向滚动]排序设置",
+  "nav_stats": "听歌统计"
 }

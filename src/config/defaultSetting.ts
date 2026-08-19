@@ -20,6 +20,11 @@ const defaultSetting: LX.AppSetting = {
   'common.isShowStartupGreeting': true,
   'common.hideNavigationBar': false,
   'common.isEnableWebDAVLog': false,
+  'common.aiEndpoint': '',
+  'common.aiApiKey': '',
+  'common.aiNickname': '',
+  'common.aiTone': 'friend',
+  'common.aiModel': '',
 
   'common.navStatus': {
     nav_songlist: true,
@@ -31,6 +36,7 @@ const defaultSetting: LX.AppSetting = {
     nav_subscribed_albums: true,
     nav_onedrive: true,
     nav_webdav: true,
+    nav_stats: true,
   },
 
   'common.navOrder': [
@@ -45,6 +51,7 @@ const defaultSetting: LX.AppSetting = {
     'nav_my_playlist',
     'nav_onedrive',
     'nav_webdav',
+    'nav_stats',
     'nav_setting',
   ],
 

@@ -132,6 +132,14 @@ const LandscapeImmersionIcon = ({ size, color }: { size: number; color: string }
   </Svg>
 )
 
+const StatsIcon = ({ size, color }: { size: number; color: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x="4" y="13" width="3.6" height="7" rx="1.2" fill={color} opacity="0.55" />
+    <Rect x="10.2" y="8" width="3.6" height="12" rx="1.2" fill={color} opacity="0.75" />
+    <Rect x="16.4" y="3" width="3.6" height="17" rx="1.2" fill={color} />
+  </Svg>
+)
+
 const FolderIcon = ({ size, color }: { size: number; color: string }) => (
   <Svg width={size} height={size} viewBox="0 0 1024 1024" fill="none">
     <Path
@@ -168,6 +176,8 @@ export const SvgIcon = memo(({ name, size = 15, rawSize, color = '#000', style }
         return <MusicListIcon size={finalSize} color={color} />
       case 'landscape-immersion':
         return <LandscapeImmersionIcon size={finalSize} color={color} />
+      case 'stats':
+        return <StatsIcon size={finalSize} color={color} />
       default:
         return null
     }

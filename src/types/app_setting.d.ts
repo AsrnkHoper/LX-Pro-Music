@@ -5,6 +5,7 @@ declare global {
   namespace LX {
     type AddMusicLocationType = 'top' | 'bottom'
     type DownloadFileNameFormat = '歌名 - 歌手' | '歌手 - 歌名' | '歌名'
+    type AiTone = 'friend' | 'sharp' | 'gentle' | 'minimal' | 'formal'
 
     interface AppSetting {
       version: string
@@ -84,6 +85,11 @@ declare global {
       'common.isShowStartupGreeting': boolean
       'common.hideNavigationBar': boolean
       'common.isEnableWebDAVLog': boolean
+      'common.aiEndpoint': string
+      'common.aiApiKey': string
+      'common.aiNickname': string
+      'common.aiTone': LX.AiTone
+      'common.aiModel': string
 
       'common.navStatus': Partial<Record<NAV_ID_Type, boolean>>;
 
