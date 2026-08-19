@@ -109,6 +109,22 @@ export const updateSetting = (setting?: Partial<LX.AppSetting> | null, isInit: b
 export const initSetting = async () => {
   let setting: Partial<LX.AppSetting> | null = await getData(storageDataPrefix.setting)
 
+  // 补齐后续版本新增的导航项,避免老用户已保存的设置里没有 nav_stats 等新入口
+  if (setting) {
+    const savedOrder = setting['common.navOrder']
+    if (Array.isArray(savedOrder)) {
+      const nextOrder = [...savedOrder]
+      for (const id of defaultSetting['common.navOrder']) {
+        if (!nextOrder.includes(id)) nextOrder.push(id)
+      }
+      setting['common.navOrder'] = nextOrder
+    }
+    setting['common.navStatus'] = {
+      ...defaultSetting['common.navStatus'],
+      ...(setting['common.navStatus'] ?? {}),
+    }
+  }
+
   // try migrate setting before v1
   if (!setting) {
     const config = await getData<{ setting?: any }>(storageDataPrefixOld.setting)
