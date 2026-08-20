@@ -148,6 +148,9 @@ const Stats = memo(() => {
   const [activeTab, setActiveTab] = useState<'overview' | 'calendar' | 'config'>(
     settingState.setting['stats.activeTab'] ?? 'overview'
   )
+  const [mountedTabs, setMountedTabs] = useState<Set<'overview' | 'calendar' | 'config'>>(
+    () => new Set([settingState.setting['stats.activeTab'] ?? 'overview'])
+  )
   const [detailMap, setDetailMap] = useState<Record<string, {
     picUrl?: string | null
     source?: string
@@ -423,6 +426,12 @@ const Stats = memo(() => {
 
   const handleTabChange = useCallback((tab: 'overview' | 'calendar' | 'config') => {
     setActiveTab(tab)
+    setMountedTabs((prev) => {
+      if (prev.has(tab)) return prev
+      const next = new Set(prev)
+      next.add(tab)
+      return next
+    })
     settingState.setting['stats.activeTab'] = tab
     void saveData(storageDataPrefix.setting, settingState.setting)
   }, [])
@@ -557,8 +566,12 @@ const Stats = memo(() => {
         </TouchableOpacity>
       </View>
 
-      {activeTab === 'overview' ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      {mountedTabs.has('overview') ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          style={activeTab === 'overview' ? styles.tabPage : styles.tabPageHidden}
+        >
           {/* Hero */}
           <View style={styles.hero}>
             <View style={styles.heroGlowLarge} />
@@ -857,8 +870,12 @@ const Stats = memo(() => {
         </ScrollView>
       ) : null}
 
-      {activeTab === 'calendar' ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      {mountedTabs.has('calendar') ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          style={activeTab === 'calendar' ? styles.tabPage : styles.tabPageHidden}
+        >
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>月度热力</Text>
             <Text size={11} color={theme['c-500']}>长按格子可删除当天数据</Text>
@@ -876,8 +893,12 @@ const Stats = memo(() => {
         </ScrollView>
       ) : null}
 
-      {activeTab === 'config' ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      {mountedTabs.has('config') ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          style={activeTab === 'config' ? styles.tabPage : styles.tabPageHidden}
+        >
           <StatsConfig />
           <DataManager />
           <AiReportSection />
@@ -905,6 +926,12 @@ const styles = createStyle({
   },
   tabBtnActive: {
     backgroundColor: '#0f172a',
+  },
+  tabPage: {
+    flex: 1,
+  },
+  tabPageHidden: {
+    display: 'none',
   },
   reportGrid: {
     flexDirection: 'row',
