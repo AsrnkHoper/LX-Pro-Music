@@ -137,19 +137,31 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
       })
   }, [pendingDeleteDate])
 
+  const buildDayList = () => {
+    const seen = new Set<string>()
+    return dayEvents
+      .map((event) => event.musicInfo as LX.Music.MusicInfoOnline)
+      .filter((info) => {
+        const id = info?.id ?? ''
+        if (!id || seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
+  }
+
   const handlePlayAll = () => {
-    if (!dayEvents.length) return
-    const list = dayEvents.map((event) => event.musicInfo as LX.Music.MusicInfoOnline)
+    const list = buildDayList()
+    if (!list.length) return
     void playOnlineList('stats_day', list, 0)
   }
 
   const handleRandomPlay = () => {
-    if (!dayEvents.length) return
-    const list = dayEvents.map((event) => event.musicInfo as LX.Music.MusicInfoOnline)
+    const list = buildDayList()
     for (let i = list.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[list[i], list[j]] = [list[j], list[i]]
     }
+    if (!list.length) return
     void playOnlineList('stats_day_random', list, 0)
   }
 

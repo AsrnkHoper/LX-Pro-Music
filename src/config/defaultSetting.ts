@@ -123,8 +123,7 @@ const defaultSetting: LX.AppSetting = {
   'menu.changePosition': true,
   'menu.changeSource': true,
   'artistDetail.albumViewMode': 'grid',
-  'stats.heatDetail': false,
-  'stats.rankDetail': false,
+  'stats.detailMode': false,
   'stats.activeTab': 'overview',
 
   'download.enable': true,

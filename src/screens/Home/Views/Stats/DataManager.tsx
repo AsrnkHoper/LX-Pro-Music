@@ -1,9 +1,10 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import { TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
+import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
 import ChoosePath, { type ChoosePathType } from '@/components/common/ChoosePath'
 import { useTheme } from '@/store/theme/hook'
-import { createStyle, toast, confirmDialog, handleSaveFile, handleReadFile } from '@/utils/tools'
+import { createStyle, toast, handleSaveFile, handleReadFile } from '@/utils/tools'
 import { clearStats, exportStatsData, importStatsData } from '@/core/player/stats'
 
 type Action = 'export' | 'import' | 'clear'
@@ -12,6 +13,7 @@ const DataManager = memo(() => {
   const theme = useTheme()
   const chooseRef = useRef<ChoosePathType>(null)
   const actionRef = useRef<Action>('export')
+  const clearConfirmRef = useRef<ConfirmAlertType>(null)
   const [chooseVisible, setChooseVisible] = useState(false)
 
   const showChoose = useCallback((action: Action) => {
@@ -47,16 +49,14 @@ const DataManager = memo(() => {
   }, [])
 
   const handleClear = useCallback(() => {
-    void confirmDialog({
-      title: '清空统计数据',
-      message: '确定清空全部听歌统计数据吗?此操作不可恢复,建议先导出备份。',
-      confirmButtonText: '清空',
-    }).then((isConfirm) => {
-      if (!isConfirm) return
-      void clearStats()
-        .then(() => toast('统计数据已清空'))
-        .catch((err: any) => toast(`清空失败:${err?.message ?? err}`, 'long'))
-    })
+    clearConfirmRef.current?.setVisible(true)
+  }, [])
+
+  const confirmClear = useCallback(() => {
+    clearConfirmRef.current?.setVisible(false)
+    void clearStats()
+      .then(() => toast('统计数据已清空'))
+      .catch((err: any) => toast(`清空失败:${err?.message ?? err}`, 'long'))
   }, [])
 
   return (
@@ -77,6 +77,15 @@ const DataManager = memo(() => {
         </TouchableOpacity>
       </View>
       {chooseVisible ? <ChoosePath ref={chooseRef} onConfirm={handleChooseConfirm} /> : null}
+      <ConfirmAlert
+        ref={clearConfirmRef}
+        title="清空统计数据"
+        text="确定清空全部听歌统计数据吗?此操作不可恢复,建议先导出备份。"
+        cancelText="取消"
+        confirmText="清空"
+        bgHide={false}
+        onConfirm={confirmClear}
+      />
     </View>
   )
 })

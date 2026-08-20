@@ -6,6 +6,9 @@ import Badge from '@/components/common/Badge'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
+import settingState from '@/store/setting/state'
+import { saveData } from '@/plugins/storage'
+import { storageDataPrefix } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
@@ -86,6 +89,20 @@ const RankItem = memo(
   }
 )
 
+const ListPlayButtons = memo(({ onPlayAll, onRandomPlay }: { onPlayAll: () => void; onRandomPlay: () => void }) => {
+  const theme = useTheme()
+  return (
+    <View style={styles.miniActions}>
+      <TouchableOpacity style={styles.miniActionBtn} onPress={onPlayAll}>
+        <Text size={11} color={theme['c-primary']}>播放全部</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.miniActionBtn} onPress={onRandomPlay}>
+        <Text size={11} color={theme['c-primary']}>随机播放</Text>
+      </TouchableOpacity>
+    </View>
+  )
+})
+
 const Stats = memo(() => {
   const theme = useTheme()
   const [overview, setOverview] = useState<LX.Stats.Overview>({ totalPlays: 0, totalDuration: 0, activeDays: 0 })
@@ -96,9 +113,10 @@ const Stats = memo(() => {
   const [recentEvents, setRecentEvents] = useState<LX.Stats.EventItem[]>([])
   const [durationSongs, setDurationSongs] = useState<LX.Stats.SongItem[]>([])
   const [selectedDate, setSelectedDate] = useState(getTodayText())
-  const showDetail = useSettingValue('stats.rankDetail')
-  const heatDetail = useSettingValue('stats.heatDetail')
-  const activeTab = useSettingValue('stats.activeTab')
+  const showDetail = useSettingValue('stats.detailMode')
+  const [activeTab, setActiveTab] = useState<'overview' | 'calendar' | 'config'>(
+    settingState.setting['stats.activeTab'] ?? 'overview'
+  )
   const [detailMap, setDetailMap] = useState<Record<string, {
     picUrl?: string | null
     source?: string
@@ -198,6 +216,12 @@ const Stats = memo(() => {
     }
   }, [loadAll])
 
+  const handleTabChange = useCallback((tab: 'overview' | 'calendar' | 'config') => {
+    setActiveTab(tab)
+    settingState.setting['stats.activeTab'] = tab
+    void saveData(storageDataPrefix.setting, settingState.setting)
+  }, [])
+
   const handlePlaySong = useCallback((song: LX.Stats.SongItem) => {
     const detail = detailMap[song.id]
     const musicInfo = (detail?.musicInfo as LX.Music.MusicInfoOnline) ?? ({
@@ -215,6 +239,69 @@ const Stats = memo(() => {
     } as LX.Music.MusicInfoOnline)
     void playOnlineList('stats_ranking', [musicInfo], 0)
   }, [detailMap])
+
+  const buildSongList = useCallback((songs: LX.Stats.SongItem[]) => {
+    return songs.map((song) => {
+      const detail = detailMap[song.id]
+      return (detail?.musicInfo as LX.Music.MusicInfoOnline) ?? ({
+        id: song.id,
+        name: song.name,
+        singer: song.singer,
+        source: 'kw',
+        interval: null,
+        meta: { songId: song.id, albumName: song.album || '', qualitys: [], _qualitys: {} },
+      } as LX.Music.MusicInfoOnline)
+    })
+  }, [detailMap])
+
+  const shuffleList = useCallback((list: LX.Music.MusicInfoOnline[]) => {
+    const arr = [...list]
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }, [])
+
+  const handlePlayAllSongs = useCallback((songs: LX.Stats.SongItem[]) => {
+    const list = buildSongList(songs)
+    if (!list.length) return
+    void playOnlineList('stats_songs', list, 0)
+  }, [buildSongList])
+
+  const handleRandomPlaySongs = useCallback((songs: LX.Stats.SongItem[]) => {
+    const list = shuffleList(buildSongList(songs))
+    if (!list.length) return
+    void playOnlineList('stats_songs_random', list, 0)
+  }, [buildSongList, shuffleList])
+
+  const handlePlayAllEvents = useCallback((events: LX.Stats.EventItem[]) => {
+    const seen = new Set<string>()
+    const list = events
+      .map((event) => event.musicInfo as LX.Music.MusicInfoOnline)
+      .filter((info) => {
+        const id = info?.id ?? ''
+        if (!id || seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
+    if (!list.length) return
+    void playOnlineList('stats_recent', list, 0)
+  }, [])
+
+  const handleRandomPlayEvents = useCallback((events: LX.Stats.EventItem[]) => {
+    const seen = new Set<string>()
+    const list = events
+      .map((event) => event.musicInfo as LX.Music.MusicInfoOnline)
+      .filter((info) => {
+        const id = info?.id ?? ''
+        if (!id || seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
+    if (!list.length) return
+    void playOnlineList('stats_recent_random', shuffleList(list), 0)
+  }, [shuffleList])
 
   const rankSongs = useMemo(
     () =>
@@ -246,19 +333,19 @@ const Stats = memo(() => {
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'overview' && styles.tabBtnActive]}
-          onPress={() => updateSetting({ 'stats.activeTab': 'overview' })}
+          onPress={() => handleTabChange('overview')}
         >
           <Text size={13} color={activeTab === 'overview' ? '#fff' : theme['c-font']}>统计</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'calendar' && styles.tabBtnActive]}
-          onPress={() => updateSetting({ 'stats.activeTab': 'calendar' })}
+          onPress={() => handleTabChange('calendar')}
         >
           <Text size={13} color={activeTab === 'calendar' ? '#fff' : theme['c-font']}>日历</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === 'config' && styles.tabBtnActive]}
-          onPress={() => updateSetting({ 'stats.activeTab': 'config' })}
+          onPress={() => handleTabChange('config')}
         >
           <Text size={13} color={activeTab === 'config' ? '#fff' : theme['c-font']}>配置</Text>
         </TouchableOpacity>
@@ -322,9 +409,12 @@ const Stats = memo(() => {
           {/* 歌曲排行 */}
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>播放次数排行</Text>
-            <TouchableOpacity onPress={() => updateSetting({ 'stats.rankDetail': !showDetail })} style={styles.detailToggle}>
-              <Text size={11} color={theme['c-primary']}>{showDetail ? '简洁' : '详细'}</Text>
-            </TouchableOpacity>
+            <View style={styles.sectionHeaderRight}>
+              <ListPlayButtons onPlayAll={() => handlePlayAllSongs(topSongs)} onRandomPlay={() => handleRandomPlaySongs(topSongs)} />
+              <TouchableOpacity onPress={() => updateSetting({ 'stats.detailMode': !showDetail })} style={styles.detailToggle}>
+                <Text size={11} color={theme['c-primary']}>{showDetail ? '简洁' : '详细'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
             {rankSongs.length === 0 ? (
@@ -344,6 +434,7 @@ const Stats = memo(() => {
           {/* 时长排行 */}
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>累计时长排行</Text>
+            <ListPlayButtons onPlayAll={() => handlePlayAllSongs(durationSongs)} onRandomPlay={() => handleRandomPlaySongs(durationSongs)} />
           </View>
           <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
             {durationSongs.length === 0 ? (
@@ -357,6 +448,9 @@ const Stats = memo(() => {
                   subtitle={item.singer}
                   value={formatDurationFull(item.duration)}
                   valueLabel=""
+                  detail={detailMap[item.id]}
+                  showDetail={showDetail}
+                  onPress={() => handlePlaySong(item)}
                 />
               ))
             )}
@@ -377,22 +471,34 @@ const Stats = memo(() => {
           {/* 最近播放 */}
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>最近播放</Text>
+            <ListPlayButtons onPlayAll={() => handlePlayAllEvents(recentEvents)} onRandomPlay={() => handleRandomPlayEvents(recentEvents)} />
           </View>
           <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
             {recentEvents.length === 0 ? (
               <Text size={12} color={theme['c-500']} style={styles.empty}>暂无数据</Text>
             ) : (
-              recentEvents.slice(0, 8).map((event, index) => (
-                <RankItem
-                  key={`recent_${event.id}_${index}`}
-                  rank={index + 1}
-                  title={event.musicInfo.name}
-                  subtitle={event.musicInfo.singer}
-                  value={formatDurationFull(event.playTime)}
-                  valueLabel=""
-                  onPress={() => handlePlaySong({ id: event.musicInfo.id ?? '', name: event.musicInfo.name, singer: event.musicInfo.singer, album: event.musicInfo.meta.albumName ?? '', plays: 0, duration: event.playTime, firstPlayedAt: event.playedAt, lastPlayedAt: event.playedAt })}
-                />
-              ))
+              recentEvents.slice(0, 8).map((event, index) => {
+                const info = event.musicInfo as LX.Music.MusicInfoOnline
+                return (
+                  <RankItem
+                    key={`recent_${event.id}_${index}`}
+                    rank={index + 1}
+                    title={info.name}
+                    subtitle={info.singer}
+                    value={formatDurationFull(event.playTime)}
+                    valueLabel=""
+                    detail={{
+                      picUrl: info.meta?.picUrl,
+                      source: info.source,
+                      quality: info.meta?._qualitys ? Object.keys(info.meta._qualitys).find((q) => info.meta._qualitys[q as LX.Quality]) : undefined,
+                      interval: info.interval,
+                      album: info.meta?.albumName,
+                    }}
+                    showDetail={showDetail}
+                    onPress={() => handlePlaySong({ id: info.id ?? '', name: info.name, singer: info.singer, album: info.meta?.albumName ?? '', plays: 0, duration: event.playTime, firstPlayedAt: event.playedAt, lastPlayedAt: event.playedAt })}
+                  />
+                )
+              })
             )}
           </View>
         </ScrollView>
@@ -407,8 +513,8 @@ const Stats = memo(() => {
           <MonthHeatMap
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            showDetail={heatDetail}
-            onToggleDetail={() => updateSetting({ 'stats.heatDetail': !heatDetail })}
+            showDetail={showDetail}
+            onToggleDetail={() => updateSetting({ 'stats.detailMode': !showDetail })}
           />
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>年度总览</Text>
@@ -517,6 +623,21 @@ const styles = createStyle({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
+  },
+  sectionHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  miniActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  miniActionBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    backgroundColor: 'rgba(77,175,124,0.12)',
   },
   sectionTitle: {
     fontWeight: '700',

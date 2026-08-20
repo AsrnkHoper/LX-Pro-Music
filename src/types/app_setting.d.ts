@@ -391,8 +391,7 @@ declare global {
       'menu.changeSource': boolean
 
       'artistDetail.albumViewMode': 'grid' | 'list'
-      'stats.heatDetail': boolean
-      'stats.rankDetail': boolean
+      'stats.detailMode': boolean
       'stats.activeTab': 'overview' | 'calendar' | 'config'
       /**
        * 是否启用下载

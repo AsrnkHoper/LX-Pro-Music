@@ -193,7 +193,7 @@ const YearOverview = memo(() => {
       </View>
       ) : (
       <View style={styles.heatGrid}>
-        {MONTH_NAMES.slice(0, visibleMonths).map((monthName, monthIndex) => {
+        {MONTH_NAMES.map((monthName, monthIndex) => {
           return (
             <HeatMonthCard
               key={monthName}
@@ -202,7 +202,7 @@ const YearOverview = memo(() => {
               dayDurations={dayDurations}
               maxDayDuration={maxDayDuration}
               todayText={todayText}
-              visible
+              visible={monthIndex < visibleMonths}
             />
           )
         })}
