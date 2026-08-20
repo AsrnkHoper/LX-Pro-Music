@@ -24,6 +24,17 @@ const MAX_EVENT_DAYS = 90
 const MIN_RECORD_TIME = 30
 const MIN_RECORD_RATIO = 0.5
 
+// 轻量内存缓存:统计页频繁读取时避免反复 JSON.parse 大数组
+let dailyCache: LX.Stats.DailyItem[] | null = null
+let songCache: LX.Stats.SongItem[] | null = null
+let eventsCache: LX.Stats.EventItem[] | null = null
+
+const invalidateStatsCache = () => {
+  dailyCache = null
+  songCache = null
+  eventsCache = null
+}
+
 const getHistoryDay = (time: number) => {
   const d = new Date(time)
   const y = d.getFullYear()
@@ -35,15 +46,21 @@ const getHistoryDay = (time: number) => {
 const getDayStart = (dateText: string) => new Date(`${dateText}T00:00:00`).getTime()
 
 export const getStatsDaily = async () => {
-  return (await getData<LX.Stats.DailyItem[] | null>(statsDailyKey)) ?? []
+  if (dailyCache) return dailyCache
+  dailyCache = (await getData<LX.Stats.DailyItem[] | null>(statsDailyKey)) ?? []
+  return dailyCache
 }
 
 export const getStatsSong = async () => {
-  return (await getData<LX.Stats.SongItem[] | null>(statsSongKey)) ?? []
+  if (songCache) return songCache
+  songCache = (await getData<LX.Stats.SongItem[] | null>(statsSongKey)) ?? []
+  return songCache
 }
 
 export const getStatsEvents = async () => {
-  return (await getData<LX.Stats.EventItem[] | null>(statsEventsKey)) ?? []
+  if (eventsCache) return eventsCache
+  eventsCache = (await getData<LX.Stats.EventItem[] | null>(statsEventsKey)) ?? []
+  return eventsCache
 }
 
 export const addStatsRecord = async (params: {
@@ -124,6 +141,7 @@ export const addStatsRecord = async (params: {
     [statsSongKey, song],
     [statsEventsKey, events],
   ])
+  invalidateStatsCache()
   global.app_event.statsUpdated()
 }
 
@@ -172,6 +190,7 @@ export const deleteStatsDay = async (date: string) => {
     [statsSongKey, song],
     [statsEventsKey, events],
   ])
+  invalidateStatsCache()
   global.app_event.statsUpdated()
 }
 
@@ -196,6 +215,7 @@ export const importStatsData = async (data: any) => {
     [statsSongKey, song],
     [statsEventsKey, events],
   ])
+  invalidateStatsCache()
   global.app_event.statsUpdated()
 }
 
@@ -205,6 +225,7 @@ export const clearStats = async () => {
     [statsSongKey, []],
     [statsEventsKey, []],
   ])
+  invalidateStatsCache()
   global.app_event.statsUpdated()
 }
 
@@ -255,6 +276,7 @@ export const backfillStatsFromHistory = async () => {
     [statsDailyKey, Array.from(dailyMap.values())],
     [statsSongKey, Array.from(songMap.values())],
   ])
+  invalidateStatsCache()
   global.app_event.statsUpdated()
 }
 

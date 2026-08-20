@@ -21,6 +21,7 @@ import DataManager from './DataManager'
 import StatsConfig from './StatsConfig'
 import RadarChart from './RadarChart'
 import ActivityCompareChart from './ActivityCompareChart'
+import DonutChart from './DonutChart'
 
 const RankItem = memo(
   ({
@@ -124,6 +125,7 @@ const Stats = memo(() => {
   const [monthPrevious, setMonthPrevious] = useState<number[]>([])
   const [yearCurrent, setYearCurrent] = useState<number[]>(new Array(12).fill(0))
   const [yearPrevious, setYearPrevious] = useState<number[]>(new Array(12).fill(0))
+  const [sourceDistribution, setSourceDistribution] = useState<{ label: string; value: number }[]>([])
   const [monthFavorites, setMonthFavorites] = useState<{
     topSong?: { name: string; singer: string; plays: number }
     topArtist?: { name: string; plays: number }
@@ -319,11 +321,13 @@ const Stats = memo(() => {
         const so = sourceDur.get(source) ?? { name: source, duration: 0 }
         so.duration += e.playTime; sourceDur.set(source, so)
       }
+      const sortedSources = Array.from(sourceDur.values()).sort((a, b) => b.duration - a.duration)
       setLongTerm({
         topArtist: Array.from(artistDur.values()).sort((a, b) => b.duration - a.duration)[0],
         topAlbum: Array.from(albumDur.values()).sort((a, b) => b.duration - a.duration)[0],
-        topSource: Array.from(sourceDur.values()).sort((a, b) => b.duration - a.duration)[0],
+        topSource: sortedSources[0],
       })
+      setSourceDistribution(sortedSources.map((item) => ({ label: item.name, value: item.duration })))
 
     })
   }, [])
@@ -695,6 +699,19 @@ const Stats = memo(() => {
                 {longTerm.topSource ? `  ${formatDurationFull(longTerm.topSource.duration)}` : ''}
               </Text>
             </View>
+          </View>
+
+          {/* 音乐平台占比 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>音乐平台占比</Text>
+            <Text size={11} color={theme['c-500']}>按累计收听时长</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            {sourceDistribution.length === 0 ? (
+              <Text size={12} color={theme['c-500']} style={styles.empty}>暂无数据</Text>
+            ) : (
+              <DonutChart data={sourceDistribution} size={180} />
+            )}
           </View>
 
           {/* 歌曲排行 */}
