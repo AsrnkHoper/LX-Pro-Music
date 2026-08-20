@@ -12,10 +12,10 @@ import { storageDataPrefix } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
-import { getStatsEvents, getStatsOverview, getStatsSong, getStatsTopArtists, getStatsTopSongs } from '@/core/player/stats'
+import { getStatsDaily, getStatsEvents, getStatsOverview, getStatsSong, getStatsTopArtists, getStatsTopSongs } from '@/core/player/stats'
 import { playOnlineList } from '@/core/list'
 import { getPlayHistory } from '@/utils/data'
-import { formatDurationFull, formatNumber, getTodayText } from './utils'
+import { formatDurationFull, formatNumber, getHeatColor, getTodayText } from './utils'
 import AiReportSection from './AiReportSection'
 import DataManager from './DataManager'
 
@@ -112,6 +112,23 @@ const Stats = memo(() => {
   const [yearOverview, setYearOverview] = useState<LX.Stats.Overview>({ totalPlays: 0, totalDuration: 0, activeDays: 0 })
   const [recentEvents, setRecentEvents] = useState<LX.Stats.EventItem[]>([])
   const [durationSongs, setDurationSongs] = useState<LX.Stats.SongItem[]>([])
+  const [monthFavorites, setMonthFavorites] = useState<{
+    topSong?: { name: string; singer: string; plays: number }
+    topArtist?: { name: string; plays: number }
+    topAlbum?: { name: string; plays: number }
+  }>({})
+  const [habits, setHabits] = useState<{
+    topHour: number
+    avgDailyMin: number
+    longestStreak: number
+    monthActiveRate: number
+  }>({ topHour: 0, avgDailyMin: 0, longestStreak: 0, monthActiveRate: 0 })
+  const [longTerm, setLongTerm] = useState<{
+    topArtist?: { name: string; duration: number }
+    topAlbum?: { name: string; duration: number }
+    topSource?: { name: string; duration: number }
+  }>({})
+  const [weeklyHeat, setWeeklyHeat] = useState<{ date: string; duration: number }[]>([])
   const [selectedDate, setSelectedDate] = useState(getTodayText())
   const showDetail = useSettingValue('stats.detailMode')
   const [activeTab, setActiveTab] = useState<'overview' | 'calendar' | 'config'>(
@@ -140,23 +157,122 @@ const Stats = memo(() => {
       getStatsTopArtists(10),
       getStatsEvents(),
       getStatsSong(),
-    ]).then(([all, month, year, songs, artists, events, allSongs]) => {
+      getStatsDaily(),
+    ]).then(([all, month, year, songs, artists, events, allSongs, daily]) => {
       setOverview(all)
       setMonthOverview(month)
       setYearOverview(year)
       setTopSongs(songs)
       setTopArtists(artists)
-      setRecentEvents(
-        events
-          .slice(-10)
-          .reverse()
-      )
+      setRecentEvents(events.slice(-10).reverse())
       setDurationSongs(
         allSongs
           .filter((item) => item.duration > 0)
           .sort((a, b) => b.duration - a.duration)
           .slice(0, 10)
       )
+
+      // 本月最常听
+      const monthEvents = events.filter((e) => e.playedAt >= monthStart && e.playedAt <= monthEnd)
+      const songAgg = new Map<string, { name: string; singer: string; plays: number }>()
+      const artistAgg = new Map<string, { name: string; plays: number }>()
+      const albumAgg = new Map<string, { name: string; plays: number }>()
+      for (const e of monthEvents) {
+        const id = e.musicInfo?.id ?? ''
+        const name = e.musicInfo?.name ?? ''
+        const singer = e.musicInfo?.singer ?? ''
+        const album = e.musicInfo?.meta?.albumName || '未知专辑'
+        if (id) {
+          const s = songAgg.get(id) ?? { name, singer, plays: 0 }
+          s.plays += 1; songAgg.set(id, s)
+        }
+        if (singer) {
+          const a = artistAgg.get(singer) ?? { name: singer, plays: 0 }
+          a.plays += 1; artistAgg.set(singer, a)
+        }
+        if (album) {
+          const al = albumAgg.get(album) ?? { name: album, plays: 0 }
+          al.plays += 1; albumAgg.set(album, al)
+        }
+      }
+      setMonthFavorites({
+        topSong: Array.from(songAgg.values()).sort((a, b) => b.plays - a.plays)[0],
+        topArtist: Array.from(artistAgg.values()).sort((a, b) => b.plays - a.plays)[0],
+        topAlbum: Array.from(albumAgg.values()).sort((a, b) => b.plays - a.plays)[0],
+      })
+
+      // 听歌习惯
+      const hourCount = new Array(24).fill(0)
+      for (const e of events) {
+        hourCount[new Date(e.playedAt).getHours()] += 1
+      }
+      let topHour = 0
+      hourCount.forEach((count, hour) => {
+        if (count > hourCount[topHour]) topHour = hour
+      })
+      const activeDays = daily.filter((d) => d.active).length
+      const totalDailyDuration = daily.reduce((sum, d) => sum + d.duration, 0)
+      const avgDailyMin = activeDays > 0 ? Math.round(totalDailyDuration / 60 / activeDays) : 0
+      const sortedDates = daily.filter((d) => d.active).map((d) => d.date).sort()
+      let longestStreak = 0
+      let streak = 0
+      let prevDate: Date | null = null
+      for (const dateText of sortedDates) {
+        const date = new Date(`${dateText}T00:00:00`)
+        if (prevDate && date.getTime() - prevDate.getTime() === 86400000) {
+          streak += 1
+        } else {
+          streak = 1
+        }
+        prevDate = date
+        if (streak > longestStreak) longestStreak = streak
+      }
+      const daysElapsedMonth = Math.max(1, Math.floor((Date.now() - monthStart) / 86400000) + 1)
+      const monthActiveDays = daily.filter((d) => d.active && d.date >= `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`).length
+      setHabits({
+        topHour,
+        avgDailyMin,
+        longestStreak,
+        monthActiveRate: Math.round((monthActiveDays / Math.min(daysElapsedMonth, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())) * 100),
+      })
+
+      // 长期偏好画像(按累计时长)
+      const artistDur = new Map<string, { name: string; duration: number }>()
+      const albumDur = new Map<string, { name: string; duration: number }>()
+      const sourceDur = new Map<string, { name: string; duration: number }>()
+      for (const e of events) {
+        const singer = e.musicInfo?.singer ?? ''
+        const album = e.musicInfo?.meta?.albumName || '未知专辑'
+        const source = e.musicInfo?.source ?? '未知'
+        if (singer) {
+          const a = artistDur.get(singer) ?? { name: singer, duration: 0 }
+          a.duration += e.playTime; artistDur.set(singer, a)
+        }
+        const al = albumDur.get(album) ?? { name: album, duration: 0 }
+        al.duration += e.playTime; albumDur.set(album, al)
+        const so = sourceDur.get(source) ?? { name: source, duration: 0 }
+        so.duration += e.playTime; sourceDur.set(source, so)
+      }
+      setLongTerm({
+        topArtist: Array.from(artistDur.values()).sort((a, b) => b.duration - a.duration)[0],
+        topAlbum: Array.from(albumDur.values()).sort((a, b) => b.duration - a.duration)[0],
+        topSource: Array.from(sourceDur.values()).sort((a, b) => b.duration - a.duration)[0],
+      })
+
+      // 近 8 周每日听歌时长
+      const weekStart = Date.now() - 8 * 7 * 86400000
+      const weekMap = new Map<string, number>()
+      for (const d of daily) {
+        const time = new Date(`${d.date}T00:00:00`).getTime()
+        if (time >= weekStart) weekMap.set(d.date, d.duration)
+      }
+      const weekList: { date: string; duration: number }[] = []
+      for (let i = 55; i >= 0; i--) {
+        const date = new Date(Date.now() - i * 86400000)
+        const dateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        weekList.push({ date: dateText, duration: weekMap.get(dateText) ?? 0 })
+      }
+      setWeeklyHeat(weekList)
     })
   }, [])
 
@@ -406,6 +522,110 @@ const Stats = memo(() => {
             </View>
           </View>
 
+          {/* 本月最常听 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>本月最常听</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            <View style={styles.favRow}>
+              <Text size={13} color={theme['c-500']} style={styles.favLabel}>最爱歌手</Text>
+              <Text size={14} color={theme['c-font']} numberOfLines={1} style={styles.favValue}>
+                {monthFavorites.topArtist?.name ?? '暂无'}
+                {monthFavorites.topArtist ? `  ${monthFavorites.topArtist.plays}次` : ''}
+              </Text>
+            </View>
+            <View style={styles.favRow}>
+              <Text size={13} color={theme['c-500']} style={styles.favLabel}>最爱歌曲</Text>
+              <Text size={14} color={theme['c-font']} numberOfLines={1} style={styles.favValue}>
+                {monthFavorites.topSong?.name ?? '暂无'}
+                {monthFavorites.topSong ? `  ${monthFavorites.topSong.plays}次` : ''}
+              </Text>
+            </View>
+            <View style={styles.favRow}>
+              <Text size={13} color={theme['c-500']} style={styles.favLabel}>最爱专辑</Text>
+              <Text size={14} color={theme['c-font']} numberOfLines={1} style={styles.favValue}>
+                {monthFavorites.topAlbum?.name ?? '暂无'}
+                {monthFavorites.topAlbum ? `  ${monthFavorites.topAlbum.plays}次` : ''}
+              </Text>
+            </View>
+          </View>
+
+          {/* 听歌习惯 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>听歌习惯</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            <View style={styles.reportGrid}>
+              <View style={styles.reportItem}>
+                <Text size={20} color={theme['c-primary']} style={styles.reportValue}>{habits.topHour}:00</Text>
+                <Text size={11} color={theme['c-500']}>常听时段</Text>
+              </View>
+              <View style={styles.reportItem}>
+                <Text size={20} color={theme['c-primary']} style={styles.reportValue}>{habits.avgDailyMin}分</Text>
+                <Text size={11} color={theme['c-500']}>活跃日均</Text>
+              </View>
+              <View style={styles.reportItem}>
+                <Text size={20} color={theme['c-primary']} style={styles.reportValue}>{habits.longestStreak}天</Text>
+                <Text size={11} color={theme['c-500']}>最长连续</Text>
+              </View>
+              <View style={styles.reportItem}>
+                <Text size={20} color={theme['c-primary']} style={styles.reportValue}>{habits.monthActiveRate}%</Text>
+                <Text size={11} color={theme['c-500']}>本月活跃</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* 长期偏好画像 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>长期偏好画像</Text>
+            <Text size={11} color={theme['c-500']}>按累计收听时长</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            <View style={styles.favRow}>
+              <Text size={13} color={theme['c-500']} style={styles.favLabel}>常听歌手</Text>
+              <Text size={14} color={theme['c-font']} numberOfLines={1} style={styles.favValue}>
+                {longTerm.topArtist?.name ?? '暂无'}
+                {longTerm.topArtist ? `  ${formatDurationFull(longTerm.topArtist.duration)}` : ''}
+              </Text>
+            </View>
+            <View style={styles.favRow}>
+              <Text size={13} color={theme['c-500']} style={styles.favLabel}>常听专辑</Text>
+              <Text size={14} color={theme['c-font']} numberOfLines={1} style={styles.favValue}>
+                {longTerm.topAlbum?.name ?? '暂无'}
+                {longTerm.topAlbum ? `  ${formatDurationFull(longTerm.topAlbum.duration)}` : ''}
+              </Text>
+            </View>
+            <View style={styles.favRow}>
+              <Text size={13} color={theme['c-500']} style={styles.favLabel}>常听音源</Text>
+              <Text size={14} color={theme['c-font']} numberOfLines={1} style={styles.favValue}>
+                {longTerm.topSource?.name ?? '暂无'}
+                {longTerm.topSource ? `  ${formatDurationFull(longTerm.topSource.duration)}` : ''}
+              </Text>
+            </View>
+          </View>
+
+          {/* 近8周热力 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>近 8 周听歌热力</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.weekHeatRow}>
+                {weeklyHeat.map((item) => (
+                  <View key={item.date} style={styles.weekHeatCol}>
+                    <View
+                      style={[
+                        styles.weekHeatCell,
+                        { backgroundColor: getHeatColor(item.duration, Math.max(1, ...weeklyHeat.map((w) => w.duration))) },
+                      ]}
+                    />
+                    <Text size={8} color={theme['c-500']}>{item.date.slice(5)}</Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
           {/* 歌曲排行 */}
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>播放次数排行</Text>
@@ -563,6 +783,32 @@ const styles = createStyle({
   },
   reportValue: {
     fontWeight: '800',
+  },
+  favRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  favLabel: {
+    width: 72,
+  },
+  favValue: {
+    flex: 1,
+    fontWeight: '600',
+  },
+  weekHeatRow: {
+    flexDirection: 'row',
+    gap: 4,
+    paddingVertical: 4,
+  },
+  weekHeatCol: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  weekHeatCell: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
   },
   content: {
     padding: 16,
