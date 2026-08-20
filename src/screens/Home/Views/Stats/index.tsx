@@ -18,6 +18,7 @@ import { getPlayHistory } from '@/utils/data'
 import { formatDurationFull, formatNumber, getTodayText } from './utils'
 import AiReportSection from './AiReportSection'
 import DataManager from './DataManager'
+import RadarChart from './RadarChart'
 
 const RankItem = memo(
   ({
@@ -26,6 +27,7 @@ const RankItem = memo(
     subtitle,
     value,
     valueLabel,
+    detailValueLabel,
     onPress,
     detail,
     showDetail,
@@ -35,6 +37,7 @@ const RankItem = memo(
     subtitle: string
     value: string
     valueLabel: string
+    detailValueLabel?: string
     onPress?: () => void
     detail?: {
       picUrl?: string | null
@@ -66,7 +69,7 @@ const RankItem = memo(
                 {subtitle}{detail?.album ? ` · ${detail.album}` : ''}
               </Text>
               <Text size={11} color={theme['c-500']} numberOfLines={1}>
-                {detail?.interval ? `${detail.interval} · ` : ''}播放 {value} 次
+                {detail?.interval ? `${detail.interval} · ` : ''}{detailValueLabel ?? valueLabel} {value}
               </Text>
             </View>
           </>
@@ -112,6 +115,8 @@ const Stats = memo(() => {
   const [yearOverview, setYearOverview] = useState<LX.Stats.Overview>({ totalPlays: 0, totalDuration: 0, activeDays: 0 })
   const [recentEvents, setRecentEvents] = useState<LX.Stats.EventItem[]>([])
   const [durationSongs, setDurationSongs] = useState<LX.Stats.SongItem[]>([])
+  const [hourCounts, setHourCounts] = useState<number[]>(new Array(24).fill(0))
+  const [radarData, setRadarData] = useState<{ label: string; value: number }[]>([])
   const [monthFavorites, setMonthFavorites] = useState<{
     topSong?: { name: string; singer: string; plays: number }
     topArtist?: { name: string; plays: number }
@@ -228,12 +233,34 @@ const Stats = memo(() => {
       }
       const daysElapsedMonth = Math.max(1, Math.floor((Date.now() - monthStart) / 86400000) + 1)
       const monthActiveDays = daily.filter((d) => d.active && d.date >= `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`).length
+      const activeRate = monthActiveDays / Math.min(daysElapsedMonth, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())
       setHabits({
         topHour,
         avgDailyMin,
         longestStreak,
-        monthActiveRate: Math.round((monthActiveDays / Math.min(daysElapsedMonth, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())) * 100),
+        monthActiveRate: Math.round(activeRate * 100),
       })
+
+      // 活跃时间分布与听歌画像
+      setHourCounts(hourCount)
+      const monthTotal = monthEvents.length || 1
+      const lateNightCount = monthEvents.filter((e) => {
+        const hour = new Date(e.playedAt).getHours()
+        return hour >= 23 || hour < 5
+      }).length
+      const completionAvg =
+        monthEvents.length > 0
+          ? monthEvents.reduce((sum, e) => sum + (e.maxTime > 0 ? e.playTime / e.maxTime : 0), 0) / monthEvents.length
+          : 0
+      const firstThisMonth = allSongs.filter((s) => s.firstPlayedAt >= monthStart && s.firstPlayedAt <= monthEnd).length
+      setRadarData([
+        { label: '多样性', value: Math.min(1, songAgg.size / monthTotal) },
+        { label: '深夜', value: lateNightCount / monthTotal },
+        { label: '循环', value: monthFavorites.topSong ? Math.min(1, (monthFavorites.topSong as any).plays / monthTotal) : 0 },
+        { label: '完听', value: Math.min(1, completionAvg) },
+        { label: '活跃', value: Math.min(1, activeRate) },
+        { label: '探索', value: Math.min(1, firstThisMonth / Math.max(1, songAgg.size)) },
+      ])
 
       // 长期偏好画像(按累计时长)
       const artistDur = new Map<string, { name: string; duration: number }>()
@@ -412,6 +439,7 @@ const Stats = memo(() => {
         subtitle: item.singer,
         value: `${item.plays}`,
         valueLabel: '次',
+        detailValueLabel: '播放',
         detail: detailMap[item.id],
       })),
     [topSongs, detailMap]
@@ -535,6 +563,36 @@ const Stats = memo(() => {
             </View>
           </View>
 
+          {/* 活跃时间分布 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>活跃时间分布</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            <View style={styles.hourBars}>
+              {hourCounts.map((count, hour) => {
+                const max = Math.max(1, ...hourCounts)
+                const height = count > 0 ? Math.max(6, Math.round((count / max) * 64)) : 2
+                return (
+                  <View key={hour} style={styles.hourBarCol}>
+                    <View style={[styles.hourBarTrack, { height: 64 }]}>
+                      <View style={[styles.hourBarFill, { height, backgroundColor: hour === habits.topHour ? theme['c-primary'] : theme['c-primary-alpha-500'] }]} />
+                    </View>
+                    <Text size={8} color={hour === habits.topHour ? theme['c-primary'] : theme['c-500']}>{hour}</Text>
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+
+          {/* 听歌画像 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>听歌画像</Text>
+            <Text size={11} color={theme['c-500']}>六维本地计算</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            <RadarChart data={radarData} size={240} />
+          </View>
+
           {/* 听歌习惯 */}
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>听歌习惯</Text>
@@ -630,7 +688,8 @@ const Stats = memo(() => {
                   title={item.name}
                   subtitle={item.singer}
                   value={formatDurationFull(item.duration)}
-                  valueLabel=""
+                  valueLabel="累计"
+                  detailValueLabel="累计"
                   detail={detailMap[item.id]}
                   showDetail={showDetail}
                   onPress={() => handlePlaySong(item)}
@@ -669,7 +728,8 @@ const Stats = memo(() => {
                     title={info.name}
                     subtitle={info.singer}
                     value={formatDurationFull(event.playTime)}
-                    valueLabel=""
+                    valueLabel="播放"
+                    detailValueLabel="播放"
                     detail={{
                       picUrl: info.meta?.picUrl,
                       source: info.source,
@@ -746,6 +806,27 @@ const styles = createStyle({
   },
   reportValue: {
     fontWeight: '800',
+  },
+  hourBars: {
+    flexDirection: 'row',
+    gap: 3,
+    paddingVertical: 4,
+  },
+  hourBarCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  hourBarTrack: {
+    width: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(128,128,128,0.10)',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  hourBarFill: {
+    width: '100%',
+    borderRadius: 4,
   },
   favRow: {
     flexDirection: 'row',
