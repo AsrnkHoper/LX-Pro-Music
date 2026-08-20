@@ -173,165 +173,192 @@ const Stats = memo(() => {
       getStatsSong(),
       getStatsDaily(),
     ]).then(([all, month, year, songs, artists, events, allSongs, daily]) => {
+      // 第一批:基础数据立即上屏,让页面先有内容
       setOverview(all)
       setMonthOverview(month)
       setYearOverview(year)
       setTopSongs(songs)
       setTopArtists(artists)
-      setRecentEvents(events.slice(-10).reverse())
-      setDurationSongs(
-        allSongs
-          .filter((item) => item.duration > 0)
-          .sort((a, b) => b.duration - a.duration)
-          .slice(0, 10)
-      )
 
-      // 本月最常听
-      const monthEvents = events.filter((e) => e.playedAt >= monthStart && e.playedAt <= monthEnd)
-      const songAgg = new Map<string, { name: string; singer: string; plays: number }>()
-      const artistAgg = new Map<string, { name: string; plays: number }>()
-      const albumAgg = new Map<string, { name: string; plays: number }>()
-      for (const e of monthEvents) {
-        const id = e.musicInfo?.id ?? ''
-        const name = e.musicInfo?.name ?? ''
-        const singer = e.musicInfo?.singer ?? ''
-        const album = e.musicInfo?.meta?.albumName || '未知专辑'
-        if (id) {
-          const s = songAgg.get(id) ?? { name, singer, plays: 0 }
-          s.plays += 1; songAgg.set(id, s)
-        }
-        if (singer) {
-          const a = artistAgg.get(singer) ?? { name: singer, plays: 0 }
-          a.plays += 1; artistAgg.set(singer, a)
-        }
-        if (album) {
-          const al = albumAgg.get(album) ?? { name: album, plays: 0 }
-          al.plays += 1; albumAgg.set(album, al)
-        }
-      }
-      const topSongLocal = Array.from(songAgg.values()).sort((a, b) => b.plays - a.plays)[0]
-      const topArtistLocal = Array.from(artistAgg.values()).sort((a, b) => b.plays - a.plays)[0]
-      const topAlbumLocal = Array.from(albumAgg.values()).sort((a, b) => b.plays - a.plays)[0]
-      setMonthFavorites({
-        topSong: topSongLocal,
-        topArtist: topArtistLocal,
-        topAlbum: topAlbumLocal,
-      })
+      // 第二批:列表类数据稍后计算,避免首帧阻塞
+      setTimeout(() => {
+        setRecentEvents(events.slice(-10).reverse())
+        setDurationSongs(
+          allSongs
+            .filter((item) => item.duration > 0)
+            .sort((a, b) => b.duration - a.duration)
+            .slice(0, 10)
+        )
 
-      // 听歌习惯
-      const hourCount = new Array(24).fill(0)
-      for (const e of events) {
-        hourCount[new Date(e.playedAt).getHours()] += 1
-      }
-      let topHour = 0
-      hourCount.forEach((count, hour) => {
-        if (count > hourCount[topHour]) topHour = hour
-      })
-      const activeDays = daily.filter((d) => d.active).length
-      const totalDailyDuration = daily.reduce((sum, d) => sum + d.duration, 0)
-      const avgDailyMin = activeDays > 0 ? Math.round(totalDailyDuration / 60 / activeDays) : 0
-      const sortedDates = daily.filter((d) => d.active).map((d) => d.date).sort()
-      let longestStreak = 0
-      let streak = 0
-      let prevDate: Date | null = null
-      for (const dateText of sortedDates) {
-        const date = new Date(`${dateText}T00:00:00`)
-        if (prevDate && date.getTime() - prevDate.getTime() === 86400000) {
-          streak += 1
-        } else {
-          streak = 1
+        const monthEvents = events.filter((e) => e.playedAt >= monthStart && e.playedAt <= monthEnd)
+        const songAgg = new Map<string, { name: string; singer: string; plays: number }>()
+        const artistAgg = new Map<string, { name: string; plays: number }>()
+        const albumAgg = new Map<string, { name: string; plays: number }>()
+        for (const e of monthEvents) {
+          const id = e.musicInfo?.id ?? ''
+          const name = e.musicInfo?.name ?? ''
+          const singer = e.musicInfo?.singer ?? ''
+          const album = e.musicInfo?.meta?.albumName || '未知专辑'
+          if (id) {
+            const song = songAgg.get(id) ?? { name, singer, plays: 0 }
+            song.plays += 1
+            songAgg.set(id, song)
+          }
+          if (singer) {
+            const artist = artistAgg.get(singer) ?? { name: singer, plays: 0 }
+            artist.plays += 1
+            artistAgg.set(singer, artist)
+          }
+          if (album) {
+            const al = albumAgg.get(album) ?? { name: album, plays: 0 }
+            al.plays += 1
+            albumAgg.set(album, al)
+          }
         }
-        prevDate = date
-        if (streak > longestStreak) longestStreak = streak
-      }
-      const daysElapsedMonth = Math.max(1, Math.floor((Date.now() - monthStart) / 86400000) + 1)
-      const monthActiveDays = daily.filter((d) => d.active && d.date >= `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`).length
-      const activeRate = monthActiveDays / Math.min(daysElapsedMonth, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())
-      setHabits({
-        topHour,
-        avgDailyMin,
-        longestStreak,
-        monthActiveRate: Math.round(activeRate * 100),
-      })
+        setMonthFavorites({
+          topSong: Array.from(songAgg.values()).sort((a, b) => b.plays - a.plays)[0],
+          topArtist: Array.from(artistAgg.values()).sort((a, b) => b.plays - a.plays)[0],
+          topAlbum: Array.from(albumAgg.values()).sort((a, b) => b.plays - a.plays)[0],
+        })
+      }, 0)
 
-      // 活跃时间分布与听歌画像
-      setHourCounts(hourCount)
-      const monthTotal = monthEvents.length || 1
-      const lateNightCount = monthEvents.filter((e) => {
-        const hour = new Date(e.playedAt).getHours()
-        return hour >= 23 || hour < 5
-      }).length
-      const completionAvg =
-        monthEvents.length > 0
-          ? monthEvents.reduce((sum, e) => sum + (e.maxTime > 0 ? Math.min(1, e.playTime / e.maxTime) : 0), 0) / monthEvents.length
-          : 0
-      const firstThisMonth = allSongs.filter((s) => s.firstPlayedAt >= monthStart && s.firstPlayedAt <= monthEnd).length
-      setRadarData([
-        { label: '多样性', value: Math.min(1, songAgg.size / monthTotal) },
-        { label: '深夜', value: Math.min(1, lateNightCount / monthTotal) },
-        { label: '循环', value: topSongLocal ? Math.min(1, topSongLocal.plays / monthTotal) : 0 },
-        { label: '完听', value: completionAvg },
-        { label: '活跃', value: Math.min(1, activeRate) },
-        { label: '探索', value: Math.min(1, firstThisMonth / Math.max(1, songAgg.size)) },
-      ])
-
-      // 活跃时长对比数据
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-      const prevMonthDate = new Date(now.getFullYear(), now.getMonth(), 0)
-      const daysInPrevMonth = prevMonthDate.getDate()
-      const mCur = new Array(daysInMonth).fill(0)
-      const mPrev = new Array(daysInPrevMonth).fill(0)
-      for (const d of daily) {
-        const date = new Date(`${d.date}T00:00:00`)
-        if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) {
-          mCur[date.getDate() - 1] = d.duration
-        } else if (date.getFullYear() === prevMonthDate.getFullYear() && date.getMonth() === prevMonthDate.getMonth()) {
-          mPrev[date.getDate() - 1] = d.duration
+      // 第三批:图表/画像/趋势计算最后做,并分帧渲染
+      setTimeout(() => {
+        const now = new Date()
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() - 1
+        const monthEvents = events.filter((e) => e.playedAt >= monthStart && e.playedAt <= monthEnd)
+        const songAgg = new Map<string, { name: string; singer: string; plays: number }>()
+        const artistAgg = new Map<string, { name: string; plays: number }>()
+        for (const e of monthEvents) {
+          const id = e.musicInfo?.id ?? ''
+          const singer = e.musicInfo?.singer ?? ''
+          if (id) {
+            const song = songAgg.get(id) ?? { name: e.musicInfo?.name ?? '', singer, plays: 0 }
+            song.plays += 1
+            songAgg.set(id, song)
+          }
+          if (singer) {
+            const artist = artistAgg.get(singer) ?? { name: singer, plays: 0 }
+            artist.plays += 1
+            artistAgg.set(singer, artist)
+          }
         }
-      }
-      setMonthCurrent(mCur)
-      setMonthPrevious(mPrev)
+        const topSongLocal = Array.from(songAgg.values()).sort((a, b) => b.plays - a.plays)[0]
 
-      const yCur = new Array(12).fill(0)
-      const yPrev = new Array(12).fill(0)
-      for (const d of daily) {
-        const date = new Date(`${d.date}T00:00:00`)
-        if (date.getFullYear() === now.getFullYear()) {
-          yCur[date.getMonth()] += d.duration
-        } else if (date.getFullYear() === now.getFullYear() - 1) {
-          yPrev[date.getMonth()] += d.duration
+        const hourCount = new Array(24).fill(0)
+        for (const e of events) {
+          hourCount[new Date(e.playedAt).getHours()] += 1
         }
-      }
-      setYearCurrent(yCur)
-      setYearPrevious(yPrev)
-
-      // 长期偏好画像(按累计时长)
-      const artistDur = new Map<string, { name: string; duration: number }>()
-      const albumDur = new Map<string, { name: string; duration: number }>()
-      const sourceDur = new Map<string, { name: string; duration: number }>()
-      for (const e of events) {
-        const singer = e.musicInfo?.singer ?? ''
-        const album = e.musicInfo?.meta?.albumName || '未知专辑'
-        const source = e.musicInfo?.source ?? '未知'
-        if (singer) {
-          const a = artistDur.get(singer) ?? { name: singer, duration: 0 }
-          a.duration += e.playTime; artistDur.set(singer, a)
+        let topHour = 0
+        hourCount.forEach((count, hour) => {
+          if (count > hourCount[topHour]) topHour = hour
+        })
+        const activeDays = daily.filter((d) => d.active).length
+        const totalDailyDuration = daily.reduce((sum, d) => sum + d.duration, 0)
+        const avgDailyMin = activeDays > 0 ? Math.round(totalDailyDuration / 60 / activeDays) : 0
+        const sortedDates = daily.filter((d) => d.active).map((d) => d.date).sort()
+        let longestStreak = 0
+        let streak = 0
+        let prevDate: Date | null = null
+        for (const dateText of sortedDates) {
+          const date = new Date(`${dateText}T00:00:00`)
+          if (prevDate && date.getTime() - prevDate.getTime() === 86400000) streak += 1
+          else streak = 1
+          prevDate = date
+          if (streak > longestStreak) longestStreak = streak
         }
-        const al = albumDur.get(album) ?? { name: album, duration: 0 }
-        al.duration += e.playTime; albumDur.set(album, al)
-        const so = sourceDur.get(source) ?? { name: source, duration: 0 }
-        so.duration += e.playTime; sourceDur.set(source, so)
-      }
-      const sortedSources = Array.from(sourceDur.values()).sort((a, b) => b.duration - a.duration)
-      setLongTerm({
-        topArtist: Array.from(artistDur.values()).sort((a, b) => b.duration - a.duration)[0],
-        topAlbum: Array.from(albumDur.values()).sort((a, b) => b.duration - a.duration)[0],
-        topSource: sortedSources[0],
-      })
-      setSourceDistribution(sortedSources.map((item) => ({ label: item.name, value: item.duration })))
+        const daysElapsedMonth = Math.max(1, Math.floor((Date.now() - monthStart) / 86400000) + 1)
+        const monthActiveDays = daily.filter(
+          (d) => d.active && d.date >= `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+        ).length
+        const activeRate =
+          monthActiveDays / Math.min(daysElapsedMonth, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())
+        const monthTotal = monthEvents.length || 1
+        const lateNightCount = monthEvents.filter((e) => {
+          const hour = new Date(e.playedAt).getHours()
+          return hour >= 23 || hour < 5
+        }).length
+        const completionAvg =
+          monthEvents.length > 0
+            ? monthEvents.reduce((sum, e) => sum + (e.maxTime > 0 ? Math.min(1, e.playTime / e.maxTime) : 0), 0) /
+              monthEvents.length
+            : 0
+        const firstThisMonth = allSongs.filter(
+          (s) => s.firstPlayedAt >= monthStart && s.firstPlayedAt <= monthEnd
+        ).length
 
-      // 先让文字卡片渲染,下一帧再渲染 SVG 图表,避免首帧卡顿
-      setTimeout(() => setChartsReady(true), 0)
+        setHabits({
+          topHour,
+          avgDailyMin,
+          longestStreak,
+          monthActiveRate: Math.round(activeRate * 100),
+        })
+        setHourCounts(hourCount)
+        setRadarData([
+          { label: '多样性', value: Math.min(1, songAgg.size / monthTotal) },
+          { label: '深夜', value: Math.min(1, lateNightCount / monthTotal) },
+          { label: '循环', value: topSongLocal ? Math.min(1, topSongLocal.plays / monthTotal) : 0 },
+          { label: '完听', value: completionAvg },
+          { label: '活跃', value: Math.min(1, activeRate) },
+          { label: '探索', value: Math.min(1, firstThisMonth / Math.max(1, songAgg.size)) },
+        ])
+
+        // 活跃时长对比
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+        const prevMonthDate = new Date(now.getFullYear(), now.getMonth(), 0)
+        const daysInPrevMonth = prevMonthDate.getDate()
+        const mCur = new Array(daysInMonth).fill(0)
+        const mPrev = new Array(daysInPrevMonth).fill(0)
+        for (const d of daily) {
+          const date = new Date(`${d.date}T00:00:00`)
+          if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) {
+            mCur[date.getDate() - 1] = d.duration
+          } else if (date.getFullYear() === prevMonthDate.getFullYear() && date.getMonth() === prevMonthDate.getMonth()) {
+            mPrev[date.getDate() - 1] = d.duration
+          }
+        }
+        const yCur = new Array(12).fill(0)
+        const yPrev = new Array(12).fill(0)
+        for (const d of daily) {
+          const date = new Date(`${d.date}T00:00:00`)
+          if (date.getFullYear() === now.getFullYear()) yCur[date.getMonth()] += d.duration
+          else if (date.getFullYear() === now.getFullYear() - 1) yPrev[date.getMonth()] += d.duration
+        }
+        setMonthCurrent(mCur)
+        setMonthPrevious(mPrev)
+        setYearCurrent(yCur)
+        setYearPrevious(yPrev)
+
+        // 长期偏好 / 平台占比
+        const artistDur = new Map<string, { name: string; duration: number }>()
+        const albumDur = new Map<string, { name: string; duration: number }>()
+        const sourceDur = new Map<string, { name: string; duration: number }>()
+        for (const e of events) {
+          const singer = e.musicInfo?.singer ?? ''
+          const album = e.musicInfo?.meta?.albumName || '未知专辑'
+          const source = e.musicInfo?.source ?? '未知'
+          if (singer) {
+            const a = artistDur.get(singer) ?? { name: singer, duration: 0 }
+            a.duration += e.playTime
+            artistDur.set(singer, a)
+          }
+          const al = albumDur.get(album) ?? { name: album, duration: 0 }
+          al.duration += e.playTime
+          albumDur.set(album, al)
+          const so = sourceDur.get(source) ?? { name: source, duration: 0 }
+          so.duration += e.playTime
+          sourceDur.set(source, so)
+        }
+        const sortedSources = Array.from(sourceDur.values()).sort((a, b) => b.duration - a.duration)
+        setLongTerm({
+          topArtist: Array.from(artistDur.values()).sort((a, b) => b.duration - a.duration)[0],
+          topAlbum: Array.from(albumDur.values()).sort((a, b) => b.duration - a.duration)[0],
+          topSource: sortedSources[0],
+        })
+        setSourceDistribution(sortedSources.map((item) => ({ label: item.name, value: item.duration })))
+        setChartsReady(true)
+      }, 32)
     })
   }, [])
 
