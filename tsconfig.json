@@ -9,5 +9,5 @@
       "@/*": ["src/*"]
     }
   },
-  "exclude": ["node_modules", "build", "dist"]
+  "exclude": ["node_modules", "node_modules2.0", "build", "dist"]
 }

@@ -71,3 +71,7 @@ buck-out/
 Walnut.jks
 android/app/Walnut.jks
 lx-netease-music-mobile.zip
+
+# Local toolchain / secrets
+/.build-env/
+.github_key
