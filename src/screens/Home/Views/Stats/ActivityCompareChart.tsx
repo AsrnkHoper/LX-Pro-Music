@@ -4,7 +4,6 @@ import Svg, { Line, Polyline, Text as SvgText } from 'react-native-svg'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
-import { formatDurationFull } from './utils'
 
 interface Props {
   mode: 'month' | 'year'
@@ -36,9 +35,14 @@ const ActivityCompareChart = memo(({ mode, current, previous, currentLabel, prev
     () => previous.map((value, index) => pointFor(index, value, previous.length, maxY)).map((p) => `${p.x},${p.y}`).join(' '),
     [previous, maxY]
   )
+  const compactDuration = (seconds: number) => {
+    const totalMinutes = Math.floor(seconds / 60)
+    if (totalMinutes < 60) return `${totalMinutes}m`
+    return `${Math.floor(totalMinutes / 60)}h`
+  }
   const yTicks = [0.25, 0.5, 0.75, 1].map((ratio) => ({
     y: H - PAD - ratio * (H - PAD * 2),
-    label: formatDurationFull(Math.round(maxY * ratio)),
+    label: compactDuration(Math.round(maxY * ratio)),
   }))
 
   return (

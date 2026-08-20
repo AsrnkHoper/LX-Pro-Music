@@ -27,7 +27,6 @@ const AiReportSection = memo(() => {
   const pendingDeleteIdRef = useRef<string | null>(null)
   const [report, setReport] = useState<AiReportV2 | null>(null)
   const [archive, setArchive] = useState<ArchiveItem[]>([])
-  const [expanded, setExpanded] = useState(false)
 
   const loadArchive = useCallback(() => {
     void getReportArchive().then(setArchive)
@@ -169,12 +168,11 @@ const AiReportSection = memo(() => {
 
   return (
     <View style={styles.wrapper}>
-      <TouchableOpacity style={styles.sectionHeader} onPress={() => setExpanded((v) => !v)}>
+      <View style={styles.sectionHeader}>
         <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>AI 听歌报告</Text>
-        <Text size={11} color={theme['c-500']}>{expanded ? '收起 ▲' : '展开 ▼'}</Text>
-      </TouchableOpacity>
+        <Text size={11} color={theme['c-500']}>BYOK · 本地统计,AI 解读</Text>
+      </View>
 
-      {expanded ? (
       <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
         <InputItem
           value={endpoint}
@@ -257,7 +255,6 @@ const AiReportSection = memo(() => {
         {renderReport()}
         {renderArchive()}
       </View>
-      ) : null}
 
       <ConfirmAlert
         ref={alertRef}
