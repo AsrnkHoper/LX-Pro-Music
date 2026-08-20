@@ -4,6 +4,8 @@ import Text from '@/components/common/Text'
 import Image from '@/components/common/Image'
 import Badge from '@/components/common/Badge'
 import { useTheme } from '@/store/theme/hook'
+import { useSettingValue } from '@/store/setting/hook'
+import { updateSetting } from '@/core/common'
 import { createStyle } from '@/utils/tools'
 import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
@@ -47,20 +49,20 @@ const RankItem = memo(
         <View style={[styles.rankBadge, { backgroundColor: rankColor }]}>
           <Text size={12} color="#fff" style={styles.rankBadgeText}>{rank}</Text>
         </View>
-        {showDetail && detail ? (
+        {showDetail ? (
           <>
-            <Image url={detail.picUrl} style={styles.rankCover} />
-            <View style={styles.rankMain}>
+            <Image url={detail?.picUrl} style={styles.rankCover} />
+            <View style={[styles.rankMain, styles.rankMainDetail]}>
               <View style={styles.rankTitleRow}>
                 <Text size={14} color={theme['c-font']} numberOfLines={1} style={styles.rankTitleText}>{title}</Text>
-                {detail.source ? <Badge type="tertiary">{detail.source.toUpperCase()}</Badge> : null}
-                {detail.quality ? <Badge type="hq">{detail.quality}</Badge> : null}
+                {detail?.source ? <Badge type="tertiary">{detail.source.toUpperCase()}</Badge> : null}
+                {detail?.quality ? <Badge type="hq">{detail.quality}</Badge> : null}
               </View>
               <Text size={11} color={theme['c-500']} numberOfLines={1}>
-                {subtitle}{detail.album ? ` · ${detail.album}` : ''}
+                {subtitle}{detail?.album ? ` · ${detail.album}` : ''}
               </Text>
               <Text size={11} color={theme['c-500']} numberOfLines={1}>
-                {detail.interval ? `${detail.interval} · ` : ''}播放 {value} 次
+                {detail?.interval ? `${detail.interval} · ` : ''}播放 {value} 次
               </Text>
             </View>
           </>
@@ -89,7 +91,8 @@ const Stats = memo(() => {
   const [topSongs, setTopSongs] = useState<LX.Stats.SongItem[]>([])
   const [topArtists, setTopArtists] = useState<Array<{ singer: string; plays: number; duration: number }>>([])
   const [selectedDate, setSelectedDate] = useState(getTodayText())
-  const [showDetail, setShowDetail] = useState(false)
+  const showDetail = useSettingValue('stats.rankDetail')
+  const heatDetail = useSettingValue('stats.heatDetail')
   const [detailMap, setDetailMap] = useState<Record<string, {
     picUrl?: string | null
     source?: string
@@ -243,7 +246,12 @@ const Stats = memo(() => {
           <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>月度热力</Text>
           <Text size={11} color={theme['c-500']}>长按格子可删除当天数据</Text>
         </View>
-        <MonthHeatMap selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        <MonthHeatMap
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          showDetail={heatDetail}
+          onToggleDetail={() => updateSetting({ 'stats.heatDetail': !heatDetail })}
+        />
 
         {/* 年度总览 */}
         <View style={styles.sectionHeader}>
@@ -254,7 +262,7 @@ const Stats = memo(() => {
         {/* 歌曲排行 */}
         <View style={styles.sectionHeader}>
           <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>歌曲排行</Text>
-          <TouchableOpacity onPress={() => setShowDetail((v) => !v)} style={styles.detailToggle}>
+          <TouchableOpacity onPress={() => updateSetting({ 'stats.rankDetail': !showDetail })} style={styles.detailToggle}>
             <Text size={11} color={theme['c-primary']}>{showDetail ? '简洁' : '详细'}</Text>
           </TouchableOpacity>
         </View>
@@ -380,12 +388,13 @@ const styles = createStyle({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 10,
   },
   rankCover: {
     width: 42,
     height: 42,
     borderRadius: 8,
-    marginRight: 10,
+    marginRight: 12,
   },
   rankTitleRow: {
     flexDirection: 'row',
@@ -407,6 +416,10 @@ const styles = createStyle({
   rankMain: {
     flex: 1,
     marginHorizontal: 10,
+  },
+  rankMainDetail: {
+    marginHorizontal: 0,
+    marginRight: 8,
   },
   rankValue: {
     alignItems: 'flex-end',

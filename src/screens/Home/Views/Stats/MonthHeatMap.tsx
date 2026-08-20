@@ -28,11 +28,13 @@ import { addTempPlayListAndPlay } from '@/core/player/tempPlayList'
 interface Props {
   selectedDate: string
   onSelectDate: (date: string) => void
+  showDetail: boolean
+  onToggleDetail: () => void
 }
 
 const DAY = 24 * 60 * 60 * 1000
 
-const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
+const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDetail }: Props) => {
   const theme = useTheme()
   const { width: windowWidth } = useWindowSize()
   const todayText = getTodayText()
@@ -41,7 +43,6 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
   const [maxMonthDuration, setMaxMonthDuration] = useState(0)
   const [dayEvents, setDayEvents] = useState<LX.Stats.EventItem[]>([])
   const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null)
-  const [showDetail, setShowDetail] = useState(false)
   const deleteConfirmRef = useRef<ConfirmAlertType>(null)
 
   const pagePadding = 16
@@ -287,7 +288,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate }: Props) => {
             <Text size={12} color={theme['c-500']}>
               {selectedDuration > 0 ? formatDurationFull(selectedDuration) : '暂无记录'}
             </Text>
-            <TouchableOpacity onPress={() => setShowDetail((v) => !v)} style={styles.detailToggle}>
+            <TouchableOpacity onPress={onToggleDetail} style={styles.detailToggle}>
               <Text size={11} color={theme['c-primary']}>{showDetail ? '简洁' : '详细'}</Text>
             </TouchableOpacity>
           </View>
