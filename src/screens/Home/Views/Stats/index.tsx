@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { ScrollView, TouchableOpacity, View } from 'react-native'
+import { InteractionManager, ScrollView, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
 import Image from '@/components/common/Image'
 import Badge from '@/components/common/Badge'
@@ -333,7 +333,10 @@ const Stats = memo(() => {
   }, [])
 
   useEffect(() => {
-    loadAll()
+    const task = InteractionManager.runAfterInteractions(() => {
+      loadAll()
+    })
+    return () => task.cancel()
   }, [loadAll])
 
   useEffect(() => {

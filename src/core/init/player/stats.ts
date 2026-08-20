@@ -10,7 +10,7 @@ import { AppState } from 'react-native'
 import BackgroundTimer from 'react-native-background-timer'
 import playerState from '@/store/player/state'
 import settingState from '@/store/setting/state'
-import { addStatsRecordQueued, backfillStatsFromHistory } from '@/core/player/stats'
+import { addStatsRecordQueued, backfillStatsFromHistory, getStatsDaily, getStatsEvents, getStatsSong } from '@/core/player/stats'
 import { isOneDriveMusicInfo } from '@/core/oneDrive/utils'
 import { getPosition, getDuration } from '@/plugins/player'
 
@@ -135,4 +135,11 @@ export default () => {
   AppState.addEventListener('change', (state) => {
     if (state === 'active') pollPlayPosition()
   })
+
+  // 启动 5 秒后预热统计缓存,避免用户进入统计页时才解析大 JSON
+  setTimeout(() => {
+    void getStatsDaily()
+    void getStatsSong()
+    void getStatsEvents()
+  }, 5000)
 }
