@@ -15,7 +15,7 @@ import YearOverview from './YearOverview'
 import { getStatsDaily, getStatsEvents, getStatsOverview, getStatsSong, getStatsTopArtists, getStatsTopSongs } from '@/core/player/stats'
 import { playOnlineList } from '@/core/list'
 import { getPlayHistory } from '@/utils/data'
-import { formatDurationFull, formatNumber, getHeatColor, getTodayText } from './utils'
+import { formatDurationFull, formatNumber, getTodayText } from './utils'
 import AiReportSection from './AiReportSection'
 import DataManager from './DataManager'
 
@@ -128,7 +128,6 @@ const Stats = memo(() => {
     topAlbum?: { name: string; duration: number }
     topSource?: { name: string; duration: number }
   }>({})
-  const [weeklyHeat, setWeeklyHeat] = useState<{ date: string; duration: number }[]>([])
   const [selectedDate, setSelectedDate] = useState(getTodayText())
   const showDetail = useSettingValue('stats.detailMode')
   const [activeTab, setActiveTab] = useState<'overview' | 'calendar' | 'config'>(
@@ -259,20 +258,6 @@ const Stats = memo(() => {
         topSource: Array.from(sourceDur.values()).sort((a, b) => b.duration - a.duration)[0],
       })
 
-      // 近 8 周每日听歌时长
-      const weekStart = Date.now() - 8 * 7 * 86400000
-      const weekMap = new Map<string, number>()
-      for (const d of daily) {
-        const time = new Date(`${d.date}T00:00:00`).getTime()
-        if (time >= weekStart) weekMap.set(d.date, d.duration)
-      }
-      const weekList: { date: string; duration: number }[] = []
-      for (let i = 55; i >= 0; i--) {
-        const date = new Date(Date.now() - i * 86400000)
-        const dateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-        weekList.push({ date: dateText, duration: weekMap.get(dateText) ?? 0 })
-      }
-      setWeeklyHeat(weekList)
     })
   }, [])
 
@@ -604,28 +589,6 @@ const Stats = memo(() => {
             </View>
           </View>
 
-          {/* 近8周热力 */}
-          <View style={styles.sectionHeader}>
-            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>近 8 周听歌热力</Text>
-          </View>
-          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.weekHeatRow}>
-                {weeklyHeat.map((item) => (
-                  <View key={item.date} style={styles.weekHeatCol}>
-                    <View
-                      style={[
-                        styles.weekHeatCell,
-                        { backgroundColor: getHeatColor(item.duration, Math.max(1, ...weeklyHeat.map((w) => w.duration))) },
-                      ]}
-                    />
-                    <Text size={8} color={theme['c-500']}>{item.date.slice(5)}</Text>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-
           {/* 歌曲排行 */}
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>播放次数排行</Text>
@@ -795,20 +758,6 @@ const styles = createStyle({
   favValue: {
     flex: 1,
     fontWeight: '600',
-  },
-  weekHeatRow: {
-    flexDirection: 'row',
-    gap: 4,
-    paddingVertical: 4,
-  },
-  weekHeatCol: {
-    alignItems: 'center',
-    gap: 3,
-  },
-  weekHeatCell: {
-    width: 14,
-    height: 14,
-    borderRadius: 4,
   },
   content: {
     padding: 16,
