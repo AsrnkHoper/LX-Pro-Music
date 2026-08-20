@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { TouchableOpacity, View } from 'react-native'
+import { ScrollView, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
 import Image from '@/components/common/Image'
 import Badge from '@/components/common/Badge'
@@ -24,6 +24,7 @@ import {
   getStatsEventsByDay,
 } from '@/core/player/stats'
 import { addTempPlayListAndPlay } from '@/core/player/tempPlayList'
+import { playOnlineList } from '@/core/list'
 
 interface Props {
   selectedDate: string
@@ -136,6 +137,22 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
       })
   }, [pendingDeleteDate])
 
+  const handlePlayAll = () => {
+    if (!dayEvents.length) return
+    const list = dayEvents.map((event) => event.musicInfo as LX.Music.MusicInfoOnline)
+    void playOnlineList('stats_day', list, 0)
+  }
+
+  const handleRandomPlay = () => {
+    if (!dayEvents.length) return
+    const list = dayEvents.map((event) => event.musicInfo as LX.Music.MusicInfoOnline)
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[list[i], list[j]] = [list[j], list[i]]
+    }
+    void playOnlineList('stats_day_random', list, 0)
+  }
+
   const renderDayEvents = () => {
     if (!selectedDate) return null
     if (!dayEvents.length) {
@@ -145,7 +162,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
         </Text>
       )
     }
-    return dayEvents.slice(0, 8).map((event, index) => {
+    return dayEvents.map((event, index) => {
       const info = event.musicInfo
       const qualitys = (info as LX.Music.MusicInfoOnline).meta?._qualitys
       const quality = qualitys && Object.keys(qualitys).find((q) => qualitys[q as LX.Quality])
@@ -293,7 +310,23 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
             </TouchableOpacity>
           </View>
         </View>
-        {renderDayEvents()}
+        {dayEvents.length > 0 ? (
+          <View style={styles.dayActions}>
+            <TouchableOpacity style={styles.dayActionBtn} onPress={handlePlayAll}>
+              <Text size={12} color={theme['c-primary']}>播放全部</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.dayActionBtn} onPress={handleRandomPlay}>
+              <Text size={12} color={theme['c-primary']}>随机播放</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        {dayEvents.length > 0 ? (
+          <ScrollView style={styles.dayEventScroll} nestedScrollEnabled>
+            {renderDayEvents()}
+          </ScrollView>
+        ) : (
+          renderDayEvents()
+        )}
       </View>
 
       <ConfirmAlert
@@ -388,6 +421,17 @@ const styles = createStyle({
     alignItems: 'center',
     gap: 10,
   },
+  dayActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 6,
+  },
+  dayActionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(77,175,124,0.12)',
+  },
   detailToggle: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -400,6 +444,9 @@ const styles = createStyle({
   emptyEvents: {
     textAlign: 'center',
     paddingVertical: 8,
+  },
+  dayEventScroll: {
+    maxHeight: 300,
   },
   eventRow: {
     flexDirection: 'row',

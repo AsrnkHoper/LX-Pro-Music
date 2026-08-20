@@ -9,11 +9,12 @@ import { updateSetting } from '@/core/common'
 import { createStyle } from '@/utils/tools'
 import MonthHeatMap from './MonthHeatMap'
 import YearOverview from './YearOverview'
-import { getStatsEvents, getStatsOverview, getStatsTopArtists, getStatsTopSongs } from '@/core/player/stats'
+import { getStatsEvents, getStatsOverview, getStatsSong, getStatsTopArtists, getStatsTopSongs } from '@/core/player/stats'
 import { playOnlineList } from '@/core/list'
 import { getPlayHistory } from '@/utils/data'
 import { formatDurationFull, formatNumber, getTodayText } from './utils'
 import AiReportSection from './AiReportSection'
+import DataManager from './DataManager'
 
 const RankItem = memo(
   ({
@@ -90,9 +91,14 @@ const Stats = memo(() => {
   const [overview, setOverview] = useState<LX.Stats.Overview>({ totalPlays: 0, totalDuration: 0, activeDays: 0 })
   const [topSongs, setTopSongs] = useState<LX.Stats.SongItem[]>([])
   const [topArtists, setTopArtists] = useState<Array<{ singer: string; plays: number; duration: number }>>([])
+  const [monthOverview, setMonthOverview] = useState<LX.Stats.Overview>({ totalPlays: 0, totalDuration: 0, activeDays: 0 })
+  const [yearOverview, setYearOverview] = useState<LX.Stats.Overview>({ totalPlays: 0, totalDuration: 0, activeDays: 0 })
+  const [recentEvents, setRecentEvents] = useState<LX.Stats.EventItem[]>([])
+  const [durationSongs, setDurationSongs] = useState<LX.Stats.SongItem[]>([])
   const [selectedDate, setSelectedDate] = useState(getTodayText())
   const showDetail = useSettingValue('stats.rankDetail')
   const heatDetail = useSettingValue('stats.heatDetail')
+  const activeTab = useSettingValue('stats.activeTab')
   const [detailMap, setDetailMap] = useState<Record<string, {
     picUrl?: string | null
     source?: string
@@ -103,13 +109,37 @@ const Stats = memo(() => {
   }>>({})
 
   const loadAll = useCallback(() => {
-    void Promise.all([getStatsOverview(), getStatsTopSongs(10), getStatsTopArtists(10)]).then(
-      ([overviewData, songs, artists]) => {
-        setOverview(overviewData)
-        setTopSongs(songs)
-        setTopArtists(artists)
-      }
-    )
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() - 1
+    const yearStart = new Date(now.getFullYear(), 0, 1).getTime()
+    const yearEnd = new Date(now.getFullYear() + 1, 0, 1).getTime() - 1
+    void Promise.all([
+      getStatsOverview(),
+      getStatsOverview(monthStart, monthEnd),
+      getStatsOverview(yearStart, yearEnd),
+      getStatsTopSongs(10),
+      getStatsTopArtists(10),
+      getStatsEvents(),
+      getStatsSong(),
+    ]).then(([all, month, year, songs, artists, events, allSongs]) => {
+      setOverview(all)
+      setMonthOverview(month)
+      setYearOverview(year)
+      setTopSongs(songs)
+      setTopArtists(artists)
+      setRecentEvents(
+        events
+          .slice(-10)
+          .reverse()
+      )
+      setDurationSongs(
+        allSongs
+          .filter((item) => item.duration > 0)
+          .sort((a, b) => b.duration - a.duration)
+          .slice(0, 10)
+      )
+    })
   }, [])
 
   useEffect(() => {
@@ -213,89 +243,186 @@ const Stats = memo(() => {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {/* Hero */}
-        <View style={styles.hero}>
-          <View style={styles.heroGlowLarge} />
-          <View style={styles.heroGlowSmall} />
-          <Text size={13} color="rgba(255,255,255,0.75)">YOUR LISTENING LIFE</Text>
-          <Text size={30} color="#fff" style={styles.heroTitle}>你的听歌人生</Text>
-          <Text size={14} color="rgba(255,255,255,0.82)" style={styles.heroSub}>
-            每一段旋律,都在悄悄记录你
-          </Text>
-          <View style={styles.heroStats}>
-            <View style={styles.heroStatItem}>
-              <Text size={24} color="#fff" style={styles.heroStatValue}>{formatDurationFull(overview.totalDuration)}</Text>
-              <Text size={11} color="rgba(255,255,255,0.75)">累计时长</Text>
-            </View>
-            <View style={styles.heroDivider} />
-            <View style={styles.heroStatItem}>
-              <Text size={24} color="#fff" style={styles.heroStatValue}>{formatNumber(overview.totalPlays)}</Text>
-              <Text size={11} color="rgba(255,255,255,0.75)">有效收听</Text>
-            </View>
-            <View style={styles.heroDivider} />
-            <View style={styles.heroStatItem}>
-              <Text size={24} color="#fff" style={styles.heroStatValue}>{formatNumber(overview.activeDays)}</Text>
-              <Text size={11} color="rgba(255,255,255,0.75)">活跃天数</Text>
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'overview' && styles.tabBtnActive]}
+          onPress={() => updateSetting({ 'stats.activeTab': 'overview' })}
+        >
+          <Text size={13} color={activeTab === 'overview' ? '#fff' : theme['c-font']}>统计</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'calendar' && styles.tabBtnActive]}
+          onPress={() => updateSetting({ 'stats.activeTab': 'calendar' })}
+        >
+          <Text size={13} color={activeTab === 'calendar' ? '#fff' : theme['c-font']}>日历</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'config' && styles.tabBtnActive]}
+          onPress={() => updateSetting({ 'stats.activeTab': 'config' })}
+        >
+          <Text size={13} color={activeTab === 'config' ? '#fff' : theme['c-font']}>配置</Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'overview' ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          {/* Hero */}
+          <View style={styles.hero}>
+            <View style={styles.heroGlowLarge} />
+            <View style={styles.heroGlowSmall} />
+            <Text size={13} color="rgba(255,255,255,0.75)">YOUR LISTENING LIFE</Text>
+            <Text size={30} color="#fff" style={styles.heroTitle}>你的听歌人生</Text>
+            <Text size={14} color="rgba(255,255,255,0.82)" style={styles.heroSub}>
+              每一段旋律,都在悄悄记录你
+            </Text>
+            <View style={styles.heroStats}>
+              <View style={styles.heroStatItem}>
+                <Text size={24} color="#fff" style={styles.heroStatValue}>{formatDurationFull(overview.totalDuration)}</Text>
+                <Text size={11} color="rgba(255,255,255,0.75)">累计时长</Text>
+              </View>
+              <View style={styles.heroDivider} />
+              <View style={styles.heroStatItem}>
+                <Text size={24} color="#fff" style={styles.heroStatValue}>{formatNumber(overview.totalPlays)}</Text>
+                <Text size={11} color="rgba(255,255,255,0.75)">有效收听</Text>
+              </View>
+              <View style={styles.heroDivider} />
+              <View style={styles.heroStatItem}>
+                <Text size={24} color="#fff" style={styles.heroStatValue}>{formatNumber(overview.activeDays)}</Text>
+                <Text size={11} color="rgba(255,255,255,0.75)">活跃天数</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* 月度热力 */}
-        <View style={styles.sectionHeader}>
-          <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>月度热力</Text>
-          <Text size={11} color={theme['c-500']}>长按格子可删除当天数据</Text>
-        </View>
-        <MonthHeatMap
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          showDetail={heatDetail}
-          onToggleDetail={() => updateSetting({ 'stats.heatDetail': !heatDetail })}
-        />
+          {/* 本月听歌报告 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>本月听歌报告</Text>
+            <Text size={11} color={theme['c-500']}>本地统计</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            <View style={styles.reportGrid}>
+              <View style={styles.reportItem}>
+                <Text size={20} color={theme['c-primary']} style={styles.reportValue}>{formatDurationFull(monthOverview.totalDuration)}</Text>
+                <Text size={11} color={theme['c-500']}>听歌时长</Text>
+              </View>
+              <View style={styles.reportItem}>
+                <Text size={20} color={theme['c-primary']} style={styles.reportValue}>{monthOverview.totalPlays}</Text>
+                <Text size={11} color={theme['c-500']}>播放次数</Text>
+              </View>
+              <View style={styles.reportItem}>
+                <Text size={20} color={theme['c-primary']} style={styles.reportValue}>{monthOverview.activeDays}</Text>
+                <Text size={11} color={theme['c-500']}>活跃天数</Text>
+              </View>
+              <View style={styles.reportItem}>
+                <Text size={20} color={theme['c-primary']} style={styles.reportValue}>{yearOverview.activeDays}</Text>
+                <Text size={11} color={theme['c-500']}>今年活跃</Text>
+              </View>
+            </View>
+          </View>
 
-        {/* 年度总览 */}
-        <View style={styles.sectionHeader}>
-          <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>年度总览</Text>
-        </View>
-        <YearOverview />
+          {/* 歌曲排行 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>播放次数排行</Text>
+            <TouchableOpacity onPress={() => updateSetting({ 'stats.rankDetail': !showDetail })} style={styles.detailToggle}>
+              <Text size={11} color={theme['c-primary']}>{showDetail ? '简洁' : '详细'}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            {rankSongs.length === 0 ? (
+              <Text size={12} color={theme['c-500']} style={styles.empty}>听歌后这里会出现你的年度最爱</Text>
+            ) : (
+              rankSongs.map((item, index) => (
+                <RankItem
+                  key={`song_${item.rank}`}
+                  {...item}
+                  showDetail={showDetail}
+                  onPress={() => handlePlaySong(topSongs[index])}
+                />
+              ))
+            )}
+          </View>
 
-        {/* 歌曲排行 */}
-        <View style={styles.sectionHeader}>
-          <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>歌曲排行</Text>
-          <TouchableOpacity onPress={() => updateSetting({ 'stats.rankDetail': !showDetail })} style={styles.detailToggle}>
-            <Text size={11} color={theme['c-primary']}>{showDetail ? '简洁' : '详细'}</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
-          {rankSongs.length === 0 ? (
-            <Text size={12} color={theme['c-500']} style={styles.empty}>听歌后这里会出现你的年度最爱</Text>
-          ) : (
-            rankSongs.map((item, index) => (
-              <RankItem
-                key={`song_${item.rank}`}
-                {...item}
-                showDetail={showDetail}
-                onPress={() => handlePlaySong(topSongs[index])}
-              />
-            ))
-          )}
-        </View>
+          {/* 时长排行 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>累计时长排行</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            {durationSongs.length === 0 ? (
+              <Text size={12} color={theme['c-500']} style={styles.empty}>暂无数据</Text>
+            ) : (
+              durationSongs.map((item, index) => (
+                <RankItem
+                  key={`dur_${item.id}_${index}`}
+                  rank={index + 1}
+                  title={item.name}
+                  subtitle={item.singer}
+                  value={formatDurationFull(item.duration)}
+                  valueLabel=""
+                />
+              ))
+            )}
+          </View>
 
-        {/* 歌手排行 */}
-        <View style={styles.sectionHeader}>
-          <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>歌手排行</Text>
-        </View>
-        <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
-          {rankArtists.length === 0 ? (
-            <Text size={12} color={theme['c-500']} style={styles.empty}>听歌后这里会出现你偏爱的歌手</Text>
-          ) : (
-            rankArtists.map((item) => <RankItem key={`artist_${item.rank}`} {...item} />)
-          )}
-        </View>
+          {/* 歌手排行 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>歌手排行</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            {rankArtists.length === 0 ? (
+              <Text size={12} color={theme['c-500']} style={styles.empty}>听歌后这里会出现你偏爱的歌手</Text>
+            ) : (
+              rankArtists.map((item) => <RankItem key={`artist_${item.rank}`} {...item} />)
+            )}
+          </View>
 
-        {/* AI 报告 */}
-        <AiReportSection />
-      </ScrollView>
+          {/* 最近播放 */}
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>最近播放</Text>
+          </View>
+          <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
+            {recentEvents.length === 0 ? (
+              <Text size={12} color={theme['c-500']} style={styles.empty}>暂无数据</Text>
+            ) : (
+              recentEvents.slice(0, 8).map((event, index) => (
+                <RankItem
+                  key={`recent_${event.id}_${index}`}
+                  rank={index + 1}
+                  title={event.musicInfo.name}
+                  subtitle={event.musicInfo.singer}
+                  value={formatDurationFull(event.playTime)}
+                  valueLabel=""
+                  onPress={() => handlePlaySong({ id: event.musicInfo.id ?? '', name: event.musicInfo.name, singer: event.musicInfo.singer, album: event.musicInfo.meta.albumName ?? '', plays: 0, duration: event.playTime, firstPlayedAt: event.playedAt, lastPlayedAt: event.playedAt })}
+                />
+              ))
+            )}
+          </View>
+        </ScrollView>
+      ) : null}
+
+      {activeTab === 'calendar' ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>月度热力</Text>
+            <Text size={11} color={theme['c-500']}>长按格子可删除当天数据</Text>
+          </View>
+          <MonthHeatMap
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            showDetail={heatDetail}
+            onToggleDetail={() => updateSetting({ 'stats.heatDetail': !heatDetail })}
+          />
+          <View style={styles.sectionHeader}>
+            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>年度总览</Text>
+          </View>
+          <YearOverview />
+        </ScrollView>
+      ) : null}
+
+      {activeTab === 'config' ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <DataManager />
+          <AiReportSection />
+        </ScrollView>
+      ) : null}
     </View>
   )
 })
@@ -303,6 +430,33 @@ const Stats = memo(() => {
 const styles = createStyle({
   container: {
     flex: 1,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  tabBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(128,128,128,0.12)',
+  },
+  tabBtnActive: {
+    backgroundColor: '#0f172a',
+  },
+  reportGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  reportItem: {
+    width: '50%',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  reportValue: {
+    fontWeight: '800',
   },
   content: {
     padding: 16,

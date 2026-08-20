@@ -24,6 +24,8 @@ export interface ReadOptions {
   isPersist?: boolean
   dirOnly?: boolean
   filter?: string[]
+  /** 强制使用项目自带文件浏览器(避免系统选择器不显示未知扩展名) */
+  forceInternal?: boolean
 }
 const initReadOptions = {}
 
@@ -57,7 +59,7 @@ export default forwardRef<ChoosePathType, ChoosePathProps>(
 
     useImperativeHandle(ref, () => ({
       show(options) {
-        if (!settingState.setting['common.useSystemFileSelector'] || options.dirOnly) {
+        if (options.forceInternal || !settingState.setting['common.useSystemFileSelector'] || options.dirOnly) {
           // if (options.isPersist) {
           void handleOpenExternalStorage(options)
           // } else {

@@ -172,6 +172,30 @@ export const deleteStatsDay = async (date: string) => {
   global.app_event.statsUpdated()
 }
 
+export const exportStatsData = async () => {
+  const [daily, song, events] = await Promise.all([getStatsDaily(), getStatsSong(), getStatsEvents()])
+  return {
+    type: 'lx_stats_data',
+    version: 1,
+    exportedAt: Date.now(),
+    daily,
+    song,
+    events,
+  }
+}
+
+export const importStatsData = async (data: any) => {
+  const daily = Array.isArray(data?.daily) ? data.daily : []
+  const song = Array.isArray(data?.song) ? data.song : []
+  const events = Array.isArray(data?.events) ? data.events : []
+  await saveDataMultiple([
+    [statsDailyKey, daily],
+    [statsSongKey, song],
+    [statsEventsKey, events],
+  ])
+  global.app_event.statsUpdated()
+}
+
 export const clearStats = async () => {
   await saveDataMultiple([
     [statsDailyKey, []],
