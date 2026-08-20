@@ -125,6 +125,8 @@ const defaultSetting: LX.AppSetting = {
   'artistDetail.albumViewMode': 'grid',
   'stats.detailMode': false,
   'stats.activeTab': 'overview',
+  'stats.minPlayTime': 30,
+  'stats.minPlayRatio': 50,
 
   'download.enable': true,
   'download.path': '',

@@ -9,12 +9,13 @@
 import { AppState } from 'react-native'
 import BackgroundTimer from 'react-native-background-timer'
 import playerState from '@/store/player/state'
+import settingState from '@/store/setting/state'
 import { addStatsRecordQueued, backfillStatsFromHistory } from '@/core/player/stats'
 import { isOneDriveMusicInfo } from '@/core/oneDrive/utils'
 import { getPosition, getDuration } from '@/plugins/player'
 
-const MIN_PLAY_TIME = 2 * 60
-const MIN_PLAY_RATIO = 0.5
+const getMinPlayTime = () => settingState.setting['stats.minPlayTime'] ?? 30
+const getMinPlayRatio = () => (settingState.setting['stats.minPlayRatio'] ?? 50) / 100
 const POLL_INTERVAL_MS = 2000
 const MAX_CONTINUOUS_DELTA = 60 * 60
 
@@ -108,8 +109,8 @@ const pollPlayPosition = () => {
       s.accumulatedTime += delta
       if (!s.isEffective) {
         if (
-          s.accumulatedTime >= MIN_PLAY_TIME ||
-          (s.maxTime > 0 && s.accumulatedTime / s.maxTime >= MIN_PLAY_RATIO)
+          s.accumulatedTime >= getMinPlayTime() ||
+          (s.maxTime > 0 && s.accumulatedTime / s.maxTime >= getMinPlayRatio())
         ) {
           s.isEffective = true
         }

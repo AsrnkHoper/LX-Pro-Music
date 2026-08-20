@@ -2,10 +2,11 @@ import playerState from '@/store/player/state'
 import { addPlayHistory } from '@/core/player/playHistory'
 import { LIST_IDS } from '@/config/constant'
 import listState from '@/store/list/state'
+import settingState from '@/store/setting/state'
 import { isOneDriveMusicInfo } from '@/core/oneDrive/utils'
 
-const MIN_PLAY_TIME = 2 * 60
-const MIN_PLAY_RATIO = 0.5
+const getMinPlayTime = () => settingState.setting['stats.minPlayTime'] ?? 30
+const getMinPlayRatio = () => (settingState.setting['stats.minPlayRatio'] ?? 50) / 100
 
 export default () => {
   let currentMusicInfo: LX.Music.MusicInfo | null = null
@@ -32,7 +33,7 @@ export default () => {
 
   const handlePlayProgressChanged: typeof global.state_event.playProgressChanged = (progress) => {
     if (isRecorded || !currentMusicInfo) return
-    if (progress.nowPlayTime < MIN_PLAY_TIME && (!progress.maxPlayTime || progress.nowPlayTime / progress.maxPlayTime < MIN_PLAY_RATIO)) return
+    if (progress.nowPlayTime < getMinPlayTime() && (!progress.maxPlayTime || progress.nowPlayTime / progress.maxPlayTime < getMinPlayRatio())) return
 
     isRecorded = true
     void addPlayHistory({

@@ -11,6 +11,7 @@
  *  - 入账本:播放 ≥50% 且 ≥30 秒(短歌 <30s 则要求听完)
  */
 import { storageDataPrefix } from '@/config/constant'
+import settingState from '@/store/setting/state'
 import { getData, getDataMultiple, saveDataMultiple } from '@/plugins/storage'
 import { getPlayHistory } from '@/utils/data'
 
@@ -54,11 +55,13 @@ export const addStatsRecord = async (params: {
 }) => {
   const { musicInfo, playedAt, playTime, maxTime, isEffective } = params
 
-  // 入账门槛:短歌(<30s)听完才入;普通歌 ≥30s 且 ≥50%
+  // 入账门槛:读取用户配置,短歌(<设定秒数)听完才入;普通歌需同时满足秒数与比例
+  const minPlayTime = settingState.setting['stats.minPlayTime'] ?? MIN_RECORD_TIME
+  const minPlayRatio = (settingState.setting['stats.minPlayRatio'] ?? 50) / 100
   const ratio = maxTime > 0 ? playTime / maxTime : 0
-  if (maxTime > 0 && maxTime < MIN_RECORD_TIME) {
+  if (maxTime > 0 && maxTime < minPlayTime) {
     if (playTime < maxTime) return
-  } else if (playTime < MIN_RECORD_TIME || ratio < MIN_RECORD_RATIO) {
+  } else if (playTime < minPlayTime || ratio < minPlayRatio) {
     return
   }
 

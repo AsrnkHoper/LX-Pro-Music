@@ -393,6 +393,8 @@ declare global {
       'artistDetail.albumViewMode': 'grid' | 'list'
       'stats.detailMode': boolean
       'stats.activeTab': 'overview' | 'calendar' | 'config'
+      'stats.minPlayTime': number
+      'stats.minPlayRatio': number
       /**
        * 是否启用下载
        */

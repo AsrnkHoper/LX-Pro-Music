@@ -18,7 +18,9 @@ import { getPlayHistory } from '@/utils/data'
 import { formatDurationFull, formatNumber, getTodayText } from './utils'
 import AiReportSection from './AiReportSection'
 import DataManager from './DataManager'
+import StatsConfig from './StatsConfig'
 import RadarChart from './RadarChart'
+import ActivityCompareChart from './ActivityCompareChart'
 
 const RankItem = memo(
   ({
@@ -117,6 +119,11 @@ const Stats = memo(() => {
   const [durationSongs, setDurationSongs] = useState<LX.Stats.SongItem[]>([])
   const [hourCounts, setHourCounts] = useState<number[]>(new Array(24).fill(0))
   const [radarData, setRadarData] = useState<{ label: string; value: number }[]>([])
+  const [activityMode, setActivityMode] = useState<'month' | 'year'>('month')
+  const [monthCurrent, setMonthCurrent] = useState<number[]>([])
+  const [monthPrevious, setMonthPrevious] = useState<number[]>([])
+  const [yearCurrent, setYearCurrent] = useState<number[]>(new Array(12).fill(0))
+  const [yearPrevious, setYearPrevious] = useState<number[]>(new Array(12).fill(0))
   const [monthFavorites, setMonthFavorites] = useState<{
     topSong?: { name: string; singer: string; plays: number }
     topArtist?: { name: string; plays: number }
@@ -199,10 +206,13 @@ const Stats = memo(() => {
           al.plays += 1; albumAgg.set(album, al)
         }
       }
+      const topSongLocal = Array.from(songAgg.values()).sort((a, b) => b.plays - a.plays)[0]
+      const topArtistLocal = Array.from(artistAgg.values()).sort((a, b) => b.plays - a.plays)[0]
+      const topAlbumLocal = Array.from(albumAgg.values()).sort((a, b) => b.plays - a.plays)[0]
       setMonthFavorites({
-        topSong: Array.from(songAgg.values()).sort((a, b) => b.plays - a.plays)[0],
-        topArtist: Array.from(artistAgg.values()).sort((a, b) => b.plays - a.plays)[0],
-        topAlbum: Array.from(albumAgg.values()).sort((a, b) => b.plays - a.plays)[0],
+        topSong: topSongLocal,
+        topArtist: topArtistLocal,
+        topAlbum: topAlbumLocal,
       })
 
       // 听歌习惯
@@ -250,17 +260,47 @@ const Stats = memo(() => {
       }).length
       const completionAvg =
         monthEvents.length > 0
-          ? monthEvents.reduce((sum, e) => sum + (e.maxTime > 0 ? e.playTime / e.maxTime : 0), 0) / monthEvents.length
+          ? monthEvents.reduce((sum, e) => sum + (e.maxTime > 0 ? Math.min(1, e.playTime / e.maxTime) : 0), 0) / monthEvents.length
           : 0
       const firstThisMonth = allSongs.filter((s) => s.firstPlayedAt >= monthStart && s.firstPlayedAt <= monthEnd).length
       setRadarData([
         { label: '多样性', value: Math.min(1, songAgg.size / monthTotal) },
-        { label: '深夜', value: lateNightCount / monthTotal },
-        { label: '循环', value: monthFavorites.topSong ? Math.min(1, (monthFavorites.topSong as any).plays / monthTotal) : 0 },
-        { label: '完听', value: Math.min(1, completionAvg) },
+        { label: '深夜', value: Math.min(1, lateNightCount / monthTotal) },
+        { label: '循环', value: topSongLocal ? Math.min(1, topSongLocal.plays / monthTotal) : 0 },
+        { label: '完听', value: completionAvg },
         { label: '活跃', value: Math.min(1, activeRate) },
         { label: '探索', value: Math.min(1, firstThisMonth / Math.max(1, songAgg.size)) },
       ])
+
+      // 活跃时长对比数据
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+      const prevMonthDate = new Date(now.getFullYear(), now.getMonth(), 0)
+      const daysInPrevMonth = prevMonthDate.getDate()
+      const mCur = new Array(daysInMonth).fill(0)
+      const mPrev = new Array(daysInPrevMonth).fill(0)
+      for (const d of daily) {
+        const date = new Date(`${d.date}T00:00:00`)
+        if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) {
+          mCur[date.getDate() - 1] = d.duration
+        } else if (date.getFullYear() === prevMonthDate.getFullYear() && date.getMonth() === prevMonthDate.getMonth()) {
+          mPrev[date.getDate() - 1] = d.duration
+        }
+      }
+      setMonthCurrent(mCur)
+      setMonthPrevious(mPrev)
+
+      const yCur = new Array(12).fill(0)
+      const yPrev = new Array(12).fill(0)
+      for (const d of daily) {
+        const date = new Date(`${d.date}T00:00:00`)
+        if (date.getFullYear() === now.getFullYear()) {
+          yCur[date.getMonth()] += d.duration
+        } else if (date.getFullYear() === now.getFullYear() - 1) {
+          yPrev[date.getMonth()] += d.duration
+        }
+      }
+      setYearCurrent(yCur)
+      setYearPrevious(yPrev)
 
       // 长期偏好画像(按累计时长)
       const artistDur = new Map<string, { name: string; duration: number }>()
@@ -584,6 +624,16 @@ const Stats = memo(() => {
             </View>
           </View>
 
+          {/* 活跃时长对比 */}
+          <ActivityCompareChart
+            mode={activityMode}
+            current={activityMode === 'month' ? monthCurrent : yearCurrent}
+            previous={activityMode === 'month' ? monthPrevious : yearPrevious}
+            currentLabel={activityMode === 'month' ? '本月' : '今年'}
+            previousLabel={activityMode === 'month' ? '上月' : '去年'}
+            onToggleMode={() => setActivityMode((v) => (v === 'month' ? 'year' : 'month'))}
+          />
+
           {/* 听歌画像 */}
           <View style={styles.sectionHeader}>
             <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>听歌画像</Text>
@@ -768,6 +818,7 @@ const Stats = memo(() => {
 
       {activeTab === 'config' ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+          <StatsConfig />
           <DataManager />
           <AiReportSection />
         </ScrollView>
