@@ -4,7 +4,7 @@ import { handleMusicAction } from './musicAction'
 import { handlePlayerAction, type PlayerAction } from './playerAction'
 import { handleSonglistAction } from './songlistAction'
 import { extname, stat } from '@/utils/fs'
-import { handleFileMusicAction, handleFileJSAction, handleFileLXMCAction } from './fileAction'
+import { handleFileMusicAction, handleFileJSAction, handleFileLXMCAction, handleFileMIDIAction } from './fileAction'
 
 const handleLinkAction = async (link: string) => {
   // console.log(link)
@@ -42,14 +42,20 @@ const handleLinkAction = async (link: string) => {
 
 const handleFileAction = async (link: string) => {
   const file = await stat(link)
+  const ext = extname(file.name).toLowerCase()
   // console.log(file)
-  switch (extname(file.name)) {
+  switch (ext) {
     case 'json':
     case 'lxmc':
       await handleFileLXMCAction(file)
       break
     case 'js':
       await handleFileJSAction(file)
+      break
+    case 'mid':
+    case 'midi':
+    case 'kar':
+      await handleFileMIDIAction(file)
       break
     case 'ogg':
     case 'flac':
@@ -58,8 +64,10 @@ const handleFileAction = async (link: string) => {
       await handleFileMusicAction(file)
       break
     default:
-      if (!file.mimeType?.startsWith('audio/')) throw new Error('Unknown file type')
-      await handleFileMusicAction(file)
+      const mime = file.mimeType ?? ''
+      if (/\bmidi\b/i.test(mime)) await handleFileMIDIAction(file)
+      else if (/\baudio\//.test(mime)) await handleFileMusicAction(file)
+      else throw new Error('Unknown file type')
       break
   }
 }
