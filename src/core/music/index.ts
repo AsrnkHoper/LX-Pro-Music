@@ -19,6 +19,10 @@ import {
   getLyricInfo as getOneDriveLyricInfo,
 } from '@/core/oneDrive/music'
 import { webDAVLog } from '@/core/webdavMusic/logger'
+import { isMidiMusic, getMidiMusicUrl } from '@/core/midi'
+
+const isMidi = (musicInfo: LX.Music.MusicInfo): boolean =>
+  'meta' in musicInfo && isMidiMusic(musicInfo as LX.Music.MusicInfoLocal)
 
 export const getMusicUrl = async ({
   musicInfo,
@@ -41,6 +45,7 @@ export const getMusicUrl = async ({
   if ('progress' in musicInfo) {
     return getDownloadMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource })
   } else if (musicInfo.source == 'local') {
+    if (isMidi(musicInfo)) return getMidiMusicUrl(musicInfo as LX.Music.MusicInfoLocal)
     if ('oneDrive' in musicInfo.meta) {
       return getOneDriveMusicUrl({ musicInfo: musicInfo as LX.OneDrive.MusicInfo, isRefresh })
     }
@@ -67,6 +72,7 @@ export const getPicPath = async ({
   if ('progress' in musicInfo) {
     return getDownloadPicUrl({ musicInfo, isRefresh, listId, onToggleSource })
   } else if (musicInfo.source == 'local') {
+    if (isMidi(musicInfo)) return Promise.resolve('')
     if ('oneDrive' in musicInfo.meta) {
       return getOneDrivePicUrl({ musicInfo: musicInfo as LX.OneDrive.MusicInfo, isRefresh, listId })
     }
@@ -88,6 +94,15 @@ export const getLyricInfo = async ({
   if ('progress' in musicInfo) {
     return getDownloadLyricInfo({ musicInfo, isRefresh, onToggleSource })
   } else if (musicInfo.source == 'local') {
+    if (isMidi(musicInfo)) {
+      return Promise.resolve({
+        lyric: '',
+        tlyric: null,
+        lxlyric: null,
+        rlyric: null,
+        rawlrcInfo: { lyric: '' },
+      })
+    }
     if ('oneDrive' in musicInfo.meta) {
       return getOneDriveLyricInfo({ musicInfo: musicInfo as LX.OneDrive.MusicInfo, isRefresh })
     }

@@ -14,6 +14,7 @@ import {
 import { getLocalFilePath } from '@/utils/music'
 import { readLyric, readPic } from '@/utils/localMediaMetadata'
 import { stat, existsFile, mkdir, writeFile, readDir } from '@/utils/fs'
+import { findSiblingLyricFile, parseLyricFile } from '@/utils/lyricParser'
 import { requestStoragePermission } from '@/utils/tools'
 import settingState from '@/store/setting/state'
 import { btoa } from 'react-native-quick-base64'
@@ -448,6 +449,11 @@ export const getPicUrl = async ({
 }
 
 const getMusicFileLyric = async (filePath: string) => {
+  const sibling = await findSiblingLyricFile(filePath).catch(() => null)
+  if (sibling) {
+    const parsed = await parseLyricFile(sibling).catch(() => null)
+    if (parsed?.lyric) return parsed
+  }
   const lyric = await readLyric(filePath).catch(() => null)
   if (!lyric) return null
   return {

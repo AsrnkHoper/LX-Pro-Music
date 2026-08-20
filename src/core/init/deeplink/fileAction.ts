@@ -11,6 +11,21 @@ import {
   buildLocalMusicInfo,
   buildLocalMusicInfoByFilePath,
 } from '@/screens/Home/Views/Mylist/MyList/listAction'
+import { buildMidiMusicInfo } from '@/core/midi'
+
+export const handleFileMIDIAction = async (file: FileType) => {
+  if (
+    !(await confirmDialog({
+      message: global.i18n.t('deep_link_file_midi_confirm_tip', { name: file.name }),
+    }))
+  )
+    return
+
+  const isPlaying = !!playerState.playMusicInfo.musicInfo
+  const musicInfo = await buildMidiMusicInfo(file)
+  addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true }])
+  if (isPlaying) void playNext()
+}
 
 export const handleFileLXMCAction = async (file: FileType) => {
   if (
