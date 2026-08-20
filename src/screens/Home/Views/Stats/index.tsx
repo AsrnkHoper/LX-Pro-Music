@@ -126,6 +126,7 @@ const Stats = memo(() => {
   const [yearCurrent, setYearCurrent] = useState<number[]>(new Array(12).fill(0))
   const [yearPrevious, setYearPrevious] = useState<number[]>(new Array(12).fill(0))
   const [sourceDistribution, setSourceDistribution] = useState<{ label: string; value: number }[]>([])
+  const [chartsReady, setChartsReady] = useState(false)
   const [monthFavorites, setMonthFavorites] = useState<{
     topSong?: { name: string; singer: string; plays: number }
     topArtist?: { name: string; plays: number }
@@ -329,6 +330,8 @@ const Stats = memo(() => {
       })
       setSourceDistribution(sortedSources.map((item) => ({ label: item.name, value: item.duration })))
 
+      // 先让文字卡片渲染,下一帧再渲染 SVG 图表,避免首帧卡顿
+      setTimeout(() => setChartsReady(true), 0)
     })
   }, [])
 
@@ -632,14 +635,18 @@ const Stats = memo(() => {
           </View>
 
           {/* 活跃时长对比 */}
-          <ActivityCompareChart
-            mode={activityMode}
-            current={activityMode === 'month' ? monthCurrent : yearCurrent}
-            previous={activityMode === 'month' ? monthPrevious : yearPrevious}
-            currentLabel={activityMode === 'month' ? '本月' : '今年'}
-            previousLabel={activityMode === 'month' ? '上月' : '去年'}
-            onToggleMode={() => setActivityMode((v) => (v === 'month' ? 'year' : 'month'))}
-          />
+          {chartsReady ? (
+            <ActivityCompareChart
+              mode={activityMode}
+              current={activityMode === 'month' ? monthCurrent : yearCurrent}
+              previous={activityMode === 'month' ? monthPrevious : yearPrevious}
+              currentLabel={activityMode === 'month' ? '本月' : '今年'}
+              previousLabel={activityMode === 'month' ? '上月' : '去年'}
+              onToggleMode={() => setActivityMode((v) => (v === 'month' ? 'year' : 'month'))}
+            />
+          ) : (
+            <View style={[styles.chartSkeleton, { backgroundColor: theme['c-primary-background'] }]} />
+          )}
 
           {/* 听歌画像 */}
           <View style={styles.sectionHeader}>
@@ -647,7 +654,11 @@ const Stats = memo(() => {
             <Text size={11} color={theme['c-500']}>六维本地计算</Text>
           </View>
           <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
-            <RadarChart data={radarData} size={240} />
+            {chartsReady ? (
+              <RadarChart data={radarData} size={240} />
+            ) : (
+              <View style={styles.chartSkeleton} />
+            )}
           </View>
 
           {/* 听歌习惯 */}
@@ -712,8 +723,10 @@ const Stats = memo(() => {
           <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
             {sourceDistribution.length === 0 ? (
               <Text size={12} color={theme['c-500']} style={styles.empty}>暂无数据</Text>
-            ) : (
+            ) : chartsReady ? (
               <DonutChart data={sourceDistribution} size={180} />
+            ) : (
+              <View style={styles.chartSkeleton} />
             )}
           </View>
 
@@ -877,6 +890,10 @@ const styles = createStyle({
   },
   reportValue: {
     fontWeight: '800',
+  },
+  chartSkeleton: {
+    height: 180,
+    borderRadius: 16,
   },
   hourBars: {
     flexDirection: 'row',
