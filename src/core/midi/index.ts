@@ -38,10 +38,11 @@ const resetProgress = () => {
  */
 export const buildMidiMusicInfo = async (file: FileType): Promise<LX.Music.MusicInfoLocal> => {
   const parsed = await parseMidiFile(file.path)
-  const index = file.name.lastIndexOf('.')
+  const dot = file.name.lastIndexOf('.')
+  const baseName = dot > 0 ? file.name.substring(0, dot) : file.name
   return {
     id: file.path,
-    name: file.name.substring(0, index),
+    name: baseName,
     singer: '',
     source: 'local',
     interval: formatPlayTime2(parsed.duration),
@@ -50,7 +51,7 @@ export const buildMidiMusicInfo = async (file: FileType): Promise<LX.Music.Music
       filePath: file.path,
       songId: file.path,
       picUrl: '',
-      ext: file.name.substring(index + 1).toLowerCase(),
+      ext: dot > 0 ? file.name.substring(dot + 1).toLowerCase() : '',
     },
   }
 }

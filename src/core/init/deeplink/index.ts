@@ -64,8 +64,9 @@ const handleFileAction = async (link: string) => {
       await handleFileMusicAction(file)
       break
     default:
-      if (/\baudio\//.test(file.mimeType ?? '') || /\bmidi\b/i.test(file.mimeType ?? ''))
-        await handleFileMusicAction(file)
+      const mime = file.mimeType ?? ''
+      if (/\bmidi\b/i.test(mime)) await handleFileMIDIAction(file)
+      else if (/\baudio\//.test(mime)) await handleFileMusicAction(file)
       else throw new Error('Unknown file type')
       break
   }
