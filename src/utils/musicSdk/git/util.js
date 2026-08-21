@@ -39,14 +39,16 @@ export const loadDatabase = async (forceReload = false) => {
 
   try {
     const requestObj = httpFetch(GITCODE_CONFIG.dbUrl)
-    const { body } = await requestObj.promise
+    const { body, statusCode } = await requestObj.promise
 
-    if (typeof body === 'string') {
-      musicDatabase = JSON.parse(body)
-    } else {
-      musicDatabase = body
+    const parsed = typeof body === 'string' ? JSON.parse(body) : body
+    // 仓库不存在/不可访问时 GitCode 会返回 JSON 错误体（如 Project not found），
+    // 必须校验内容形态，否则错误对象会污染缓存并在下游引发 TypeError
+    if (!Array.isArray(parsed)) {
+      throw new Error(`数据库响应无效(HTTP ${statusCode})，仓库可能已删除或不可访问`)
     }
 
+    musicDatabase = parsed
     lastFetchTime = now
     console.log(`成功加载 ${musicDatabase.length} 首歌曲`)
     return musicDatabase
