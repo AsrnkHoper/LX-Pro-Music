@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { View } from 'react-native'
+import { TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
 import InputItem from '@/screens/Home/Views/Setting/components/InputItem'
 import { useTheme } from '@/store/theme/hook'
@@ -11,6 +11,7 @@ const StatsConfig = memo(() => {
   const theme = useTheme()
   const minPlayTime = useSettingValue('stats.minPlayTime')
   const minPlayRatio = useSettingValue('stats.minPlayRatio')
+  const priority = useSettingValue('stats.priority')
 
   const handleTimeChanged = (_text: string, callback: (value: string) => void) => {
     callback(_text)
@@ -50,6 +51,26 @@ const StatsConfig = memo(() => {
         onChanged={handleRatioChanged}
         placeholder="50"
       />
+      <View style={styles.priorityBlock}>
+        <Text size={13} color={theme['c-font']} style={styles.priorityLabel}>统计优先级</Text>
+        <Text size={11} color={theme['c-500']} style={styles.priorityDesc}>
+          秒数优先:短歌需听完,普通歌需同时满足秒数与比例;比例优先:播放比例达标即计入
+        </Text>
+        <View style={styles.priorityRow}>
+          <TouchableOpacity
+            style={[styles.priorityChip, { borderColor: priority === 'time' ? theme['c-primary'] : theme['c-border-background'] }]}
+            onPress={() => updateSetting({ 'stats.priority': 'time' })}
+          >
+            <Text size={13} color={priority === 'time' ? theme['c-primary'] : theme['c-font']}>秒数优先</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.priorityChip, { borderColor: priority === 'ratio' ? theme['c-primary'] : theme['c-border-background'] }]}
+            onPress={() => updateSetting({ 'stats.priority': 'ratio' })}
+          >
+            <Text size={13} color={priority === 'ratio' ? theme['c-primary'] : theme['c-font']}>比例优先</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   )
 })
@@ -66,6 +87,27 @@ const styles = createStyle({
   },
   desc: {
     marginBottom: 6,
+  },
+  priorityBlock: {
+    marginTop: 4,
+  },
+  priorityLabel: {
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  priorityDesc: {
+    marginBottom: 8,
+    lineHeight: 16,
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  priorityChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
   },
 })
 

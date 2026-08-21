@@ -52,7 +52,10 @@ const ListItem = memo(
 )
 
 export default ({ onChangeId }: { onChangeId: (id: SettingScreenIds) => void }) => {
-  const [activeId, setActiveId] = useState(global.lx.settingActiveId)
+  const [activeId, setActiveId] = useState(() => {
+    const id = global.lx.settingActiveId
+    return (SETTING_SCREENS as readonly string[]).includes(id) ? id as SettingScreenIds : 'basic'
+  })
   const theme = useTheme()
 
   const handleChangeId = useCallback((id: SettingScreenIds) => {

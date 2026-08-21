@@ -72,11 +72,17 @@ export const addStatsRecord = async (params: {
 }) => {
   const { musicInfo, playedAt, playTime, maxTime, isEffective } = params
 
-  // 入账门槛:读取用户配置,短歌(<设定秒数)听完才入;普通歌需同时满足秒数与比例
+  // 入账门槛:读取用户配置与优先级
   const minPlayTime = settingState.setting['stats.minPlayTime'] ?? MIN_RECORD_TIME
   const minPlayRatio = (settingState.setting['stats.minPlayRatio'] ?? 50) / 100
   const ratio = maxTime > 0 ? playTime / maxTime : 0
-  if (maxTime > 0 && maxTime < minPlayTime) {
+  const priority = settingState.setting['stats.priority'] ?? 'time'
+
+  if (priority === 'ratio') {
+    // 比例优先:只要播放比例达标即可计入,时长未知时退化为秒数门槛
+    if (maxTime > 0 ? ratio < minPlayRatio : playTime < minPlayTime) return
+  } else if (maxTime > 0 && maxTime < minPlayTime) {
+    // 秒数优先:短歌(<设定秒数)听完才入
     if (playTime < maxTime) return
   } else if (playTime < minPlayTime || ratio < minPlayRatio) {
     return

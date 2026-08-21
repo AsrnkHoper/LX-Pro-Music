@@ -66,7 +66,10 @@ const ListItem = memo(
 
 export default ({ onChangeId }: { onChangeId: (id: SettingScreenIds) => void }) => {
   const flatListRef = useRef<FlatList>(null)
-  const [activeId, setActiveId] = useState(global.lx.settingActiveId)
+  const [activeId, setActiveId] = useState(() => {
+    const id = global.lx.settingActiveId
+    return (SETTING_SCREENS as readonly string[]).includes(id) ? id as SettingScreenIds : 'basic'
+  })
 
   const handleChangeId = (id: SettingScreenIds) => {
     onChangeId(id)

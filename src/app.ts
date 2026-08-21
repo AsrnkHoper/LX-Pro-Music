@@ -121,15 +121,12 @@ void Promise.all([getFontSize(), windowSizeTools.init()])
     const { init: initNavigation, navigations } = await import('@/navigation')
 
     initNavigation(async () => {
-      await handleInit()
-      if (!isInited) return
-
-      await navigations
+      // 先推首页再执行初始化,避免启动时长时间停留在原生灰/白屏
+      let homeReady = true
+      const pushHomePromise = navigations
         .pushHomeScreen()
-        .then(() => {
-          void handlePushedHomeScreen()
-        })
         .catch((err: any) => {
+          homeReady = false
           void tipDialog({
             title: 'Error',
             message: err.message,
@@ -139,6 +136,12 @@ void Promise.all([getFontSize(), windowSizeTools.init()])
             exitApp()
           })
         })
+
+      await handleInit()
+      await pushHomePromise
+      if (!isInited || !homeReady) return
+
+      void handlePushedHomeScreen()
     })
   })
   .catch((err) => {

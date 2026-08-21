@@ -7,7 +7,7 @@ import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
-import { type SettingScreenIds } from '../Main'
+import { SETTING_SCREENS, type SettingScreenIds } from '../Main'
 
 export interface HeaderProps {
   onShowNavBar: () => void
@@ -17,7 +17,10 @@ export interface HeaderType {
 }
 
 export default forwardRef<HeaderType, HeaderProps>(({ onShowNavBar }, ref) => {
-  const [activeId, setActiveId] = useState(global.lx.settingActiveId)
+  const [activeId, setActiveId] = useState(() => {
+    const id = global.lx.settingActiveId
+    return (SETTING_SCREENS as readonly string[]).includes(id) ? id as SettingScreenIds : 'basic'
+  })
   const theme = useTheme()
   const t = useI18n()
 

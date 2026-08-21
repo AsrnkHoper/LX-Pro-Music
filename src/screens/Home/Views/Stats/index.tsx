@@ -109,6 +109,10 @@ const ListPlayButtons = memo(({ onPlayAll, onRandomPlay }: { onPlayAll: () => vo
   )
 })
 
+const TabPageShell = memo(({ active, children }: { active: boolean; children: React.ReactNode }) => (
+  <View style={active ? styles.tabPage : styles.tabPageHidden}>{children}</View>
+))
+
 const Stats = memo(() => {
   const theme = useTheme()
   const [overview, setOverview] = useState<LX.Stats.Overview>({ totalPlays: 0, totalDuration: 0, activeDays: 0 })
@@ -543,34 +547,11 @@ const Stats = memo(() => {
     [topArtists]
   )
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'overview' && styles.tabBtnActive]}
-          onPress={() => handleTabChange('overview')}
-        >
-          <Text size={13} color={activeTab === 'overview' ? '#fff' : theme['c-font']}>统计</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'calendar' && styles.tabBtnActive]}
-          onPress={() => handleTabChange('calendar')}
-        >
-          <Text size={13} color={activeTab === 'calendar' ? '#fff' : theme['c-font']}>日历</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'config' && styles.tabBtnActive]}
-          onPress={() => handleTabChange('config')}
-        >
-          <Text size={13} color={activeTab === 'config' ? '#fff' : theme['c-font']}>配置</Text>
-        </TouchableOpacity>
-      </View>
-
-      {mountedTabs.has('overview') ? (
+  const overviewPage = useMemo(() => (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
-          style={activeTab === 'overview' ? styles.tabPage : styles.tabPageHidden}
+          style={styles.tabScroll}
         >
           {/* Hero */}
           <View style={styles.hero}>
@@ -868,18 +849,14 @@ const Stats = memo(() => {
             )}
           </View>
         </ScrollView>
-      ) : null}
+  ), [theme, overview, monthOverview, yearOverview, topSongs, topArtists, recentEvents, durationSongs, hourCounts, habits, radarData, activityMode, monthCurrent, monthPrevious, yearCurrent, yearPrevious, sourceDistribution, chartsReady, monthFavorites, longTerm, showDetail, rankSongs, rankArtists, detailMap, handlePlaySong, handlePlayAllSongs, handleRandomPlaySongs, handlePlayAllEvents, handleRandomPlayEvents])
 
-      {mountedTabs.has('calendar') ? (
+  const calendarPage = useMemo(() => (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
-          style={activeTab === 'calendar' ? styles.tabPage : styles.tabPageHidden}
+          style={styles.tabScroll}
         >
-          <View style={styles.sectionHeader}>
-            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>月度热力</Text>
-            <Text size={11} color={theme['c-500']}>长按格子可删除当天数据</Text>
-          </View>
           <MonthHeatMap
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
@@ -891,19 +868,46 @@ const Stats = memo(() => {
           </View>
           <YearOverview />
         </ScrollView>
-      ) : null}
+  ), [theme, selectedDate, setSelectedDate, showDetail])
 
-      {mountedTabs.has('config') ? (
+  const configPage = useMemo(() => (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
-          style={activeTab === 'config' ? styles.tabPage : styles.tabPageHidden}
+          style={styles.tabScroll}
         >
           <StatsConfig />
           <DataManager />
           <AiReportSection />
         </ScrollView>
-      ) : null}
+  ), [])
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'overview' && styles.tabBtnActive]}
+          onPress={() => handleTabChange('overview')}
+        >
+          <Text size={13} color={activeTab === 'overview' ? '#fff' : theme['c-font']}>统计</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'calendar' && styles.tabBtnActive]}
+          onPress={() => handleTabChange('calendar')}
+        >
+          <Text size={13} color={activeTab === 'calendar' ? '#fff' : theme['c-font']}>日历</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === 'config' && styles.tabBtnActive]}
+          onPress={() => handleTabChange('config')}
+        >
+          <Text size={13} color={activeTab === 'config' ? '#fff' : theme['c-font']}>配置</Text>
+        </TouchableOpacity>
+      </View>
+
+      {mountedTabs.has('overview') ? <TabPageShell active={activeTab === 'overview'}>{overviewPage}</TabPageShell> : null}
+      {mountedTabs.has('calendar') ? <TabPageShell active={activeTab === 'calendar'}>{calendarPage}</TabPageShell> : null}
+      {mountedTabs.has('config') ? <TabPageShell active={activeTab === 'config'}>{configPage}</TabPageShell> : null}
     </View>
   )
 })
@@ -928,6 +932,9 @@ const styles = createStyle({
     backgroundColor: '#0f172a',
   },
   tabPage: {
+    flex: 1,
+  },
+  tabScroll: {
     flex: 1,
   },
   tabPageHidden: {

@@ -80,7 +80,7 @@ export const getMonthDays = (monthDate: Date): MonthDay[] => {
  * @param duration 当天时长(秒)
  * @param maxDuration 满色基准(当月最大时长)
  */
-export const getHeatColor = (duration: number, maxDuration: number): string => {
+export const getClassicHeatColor = (duration: number, maxDuration: number): string => {
   if (duration <= 0) return 'rgba(128,128,128,0.12)'
   const ratio = Math.min(1, Math.sqrt(duration / Math.max(maxDuration, 1)))
   // hue: 145(绿) -> 0(红)
@@ -88,6 +88,68 @@ export const getHeatColor = (duration: number, maxDuration: number): string => {
   const sat = 65 + Math.round(20 * ratio)
   const light = 45 - Math.round(15 * ratio)
   return `hsl(${hue}, ${sat}%, ${light}%)`
+}
+
+export type HeatColorMode = LX.AppSetting['stats.heatColorMode']
+
+const parseRgb = (color: string): [number, number, number] | null => {
+  const rgb = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/)
+  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])]
+  let hex = color.replace('#', '')
+  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('')
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null
+  return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
+}
+
+const mixRgb = (base: [number, number, number], target: [number, number, number], weight: number): string => {
+  const r = Math.round(base[0] + (target[0] - base[0]) * weight)
+  const g = Math.round(base[1] + (target[1] - base[1]) * weight)
+  const b = Math.round(base[2] + (target[2] - base[2]) * weight)
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+/**
+ * 主题色 5 级色阶(由浅到深)
+ */
+export const getThemeHeatColors = (primaryColor: string): string[] => {
+  const primary = parseRgb(primaryColor) ?? [77, 175, 124]
+  return [
+    mixRgb(primary, [255, 255, 255], 0.72),
+    mixRgb(primary, [255, 255, 255], 0.36),
+    mixRgb(primary, [255, 255, 255], 0),
+    mixRgb(primary, [0, 0, 0], 0.24),
+    mixRgb(primary, [0, 0, 0], 0.44),
+  ]
+}
+
+/**
+ * 莫奈取色 5 级色阶(由浅到深,睡莲蓝紫色系)
+ */
+export const MONET_HEAT_COLORS = [
+  '#f1edf7',
+  '#d8cde8',
+  '#ae93cf',
+  '#7d5aa5',
+  '#4d3575',
+]
+
+/**
+ * 统一热力取色
+ * @param mode theme = 主题色5级 / classic = 绿到红连续 / monet = 莫奈5级
+ */
+export const getHeatColor = (
+  duration: number,
+  maxDuration: number,
+  mode: HeatColorMode = 'classic',
+  primaryColor = 'rgb(77, 175, 124)'
+): string => {
+  if (duration <= 0) return 'rgba(128,128,128,0.12)'
+  if (mode === 'classic') return getClassicHeatColor(duration, maxDuration)
+
+  const colors = mode === 'monet' ? MONET_HEAT_COLORS : getThemeHeatColors(primaryColor)
+  const ratio = Math.sqrt(duration / Math.max(maxDuration, 1))
+  const index = Math.max(0, Math.min(colors.length - 1, Math.floor(ratio * colors.length)))
+  return colors[index]
 }
 
 export const hasHeatData = (duration: number) => duration > 0

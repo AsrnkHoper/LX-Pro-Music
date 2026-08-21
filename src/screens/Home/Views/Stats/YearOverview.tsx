@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
+import { useSettingValue } from '@/store/setting/hook'
 import { createStyle } from '@/utils/tools'
 import { getStatsDailyByRange, getStatsOverview } from '@/core/player/stats'
 import { formatDurationFull, getHeatColor, getMonthDays, getTodayText, WEEK_LABELS } from './utils'
@@ -16,6 +17,8 @@ const HeatMonthCard = memo(
     maxDayDuration,
     todayText,
     visible,
+    colorMode,
+    primaryColor,
   }: {
     monthName: string
     monthDate: Date
@@ -23,6 +26,8 @@ const HeatMonthCard = memo(
     maxDayDuration: number
     todayText: string
     visible: boolean
+    colorMode: LX.AppSetting['stats.heatColorMode']
+    primaryColor: string
   }) => {
     const theme = useTheme()
     const anim = useRef(new Animated.Value(0)).current
@@ -64,7 +69,7 @@ const HeatMonthCard = memo(
                 style={[
                   styles.heatDayCell,
                   {
-                    backgroundColor: isCurrentMonth ? getHeatColor(duration, maxDayDuration) : 'transparent',
+                    backgroundColor: isCurrentMonth ? getHeatColor(duration, maxDayDuration, colorMode, primaryColor) : 'transparent',
                     borderColor: isToday ? theme['c-primary'] : 'transparent',
                     borderWidth: isToday ? 1 : 0,
                   },
@@ -83,6 +88,7 @@ const HeatMonthCard = memo(
  */
 const YearOverview = memo(() => {
   const theme = useTheme()
+  const heatColorMode = useSettingValue('stats.heatColorMode')
   const year = new Date().getFullYear()
   const [monthDurations, setMonthDurations] = useState<number[]>(new Array(12).fill(0))
   const [dayDurations, setDayDurations] = useState<Map<string, number>>(new Map())
@@ -203,6 +209,8 @@ const YearOverview = memo(() => {
               maxDayDuration={maxDayDuration}
               todayText={todayText}
               visible={monthIndex < visibleMonths}
+              colorMode={heatColorMode}
+              primaryColor={theme['c-primary']}
             />
           )
         })}

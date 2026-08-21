@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { ScrollView, View } from 'react-native'
+import { View } from 'react-native'
 import NavList from './NavList'
 import Main, { type MainType } from '../Main'
 import { createStyle } from '@/utils/tools'
@@ -19,12 +19,8 @@ const styles = createStyle({
     borderRightWidth: BorderWidths.normal,
     backgroundColor: 'transparent',
   },
-  main: {
-    paddingLeft: 15,
-    paddingRight: 15,
-    paddingTop: 15,
-    paddingBottom: 15,
-    flex: 0,
+  mainWrap: {
+    flex: 1,
     backgroundColor: 'transparent',
   },
 })
@@ -38,11 +34,9 @@ export default () => {
       <View style={{ ...styles.nav, borderRightColor: theme['c-border-background'] }}>
         <NavList onChangeId={(id) => mainRef.current?.setActiveId(id)} />
       </View>
-      <ScrollView keyboardShouldPersistTaps={'always'} style={{ backgroundColor: 'transparent' }}>
-        <View style={styles.main}>
-          <Main ref={mainRef} />
-        </View>
-      </ScrollView>
+      <View style={styles.mainWrap}>
+        <Main ref={mainRef} showCategoryNav={false} />
+      </View>
     </View>
   )
 }
