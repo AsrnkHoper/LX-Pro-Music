@@ -2,6 +2,7 @@ import { aesEncryptSync, aesDecryptSync, AES_MODE } from '@/utils/nativeModules/
 import { toMD5 } from '../utils'
 import { httpFetch } from '../../request'
 import { formatPlayTime } from '@/utils/common'
+import PRIVATE_CONFIG from './gitcode.private'
 
 // 音乐数据库缓存
 let musicDatabase = null
@@ -9,13 +10,21 @@ let lastFetchTime = 0
 const CACHE_DURATION = 3600000 // 1小时缓存
 
 // Gitcode配置
+// 出于安全考虑，token 不入库：在本地 gitcode.private.js 中配置（模板见 gitcode.private.example.js）
 export const GITCODE_CONFIG = {
-  owner: 'ikun_0014', // Gitcode用户名
-  repo: 'music', // 仓库名
-  token: 'WzsER9knWNgC_4tjeJCtHKcN', // 访问令牌
+  ...PRIVATE_CONFIG,
   dbUrl: null, // 数据库文件URL（将在init中设置）
 }
-GITCODE_CONFIG.dbUrl = `https://api.gitcode.com/api/v5/repos/${GITCODE_CONFIG.owner}/${GITCODE_CONFIG.repo}/raw/audio_database.json?access_token=${GITCODE_CONFIG.token}`
+
+const buildRawUrl = (path) => {
+  let url = `https://api.gitcode.com/api/v5/repos/${GITCODE_CONFIG.owner}/${GITCODE_CONFIG.repo}/raw/${path}`
+  if (GITCODE_CONFIG.token) {
+    url += `?access_token=${GITCODE_CONFIG.token}`
+  }
+  return url
+}
+
+GITCODE_CONFIG.dbUrl = buildRawUrl('audio_database.json')
 
 /**
  * 加载音乐数据库
@@ -298,5 +307,5 @@ export const wbdCrypto = {
  */
 export const buildDownloadUrl = (relativePath) => {
   const encodedPath = encodeURIComponent(relativePath.replace(/\\/g, '/'))
-  return `https://api.gitcode.com/api/v5/repos/${GITCODE_CONFIG.owner}/${GITCODE_CONFIG.repo}/raw/${encodedPath}?access_token=${GITCODE_CONFIG.token}`
+  return buildRawUrl(encodedPath)
 }
