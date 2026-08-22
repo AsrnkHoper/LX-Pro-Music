@@ -77,12 +77,13 @@ export default ({ componentId }: Props) => {
   )
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <PageContent>{isHorizontalMode ? <Horizontal componentId={componentId} /> : <Vertical componentId={componentId} />}</PageContent>
+      <Oobe />
       <ArtistSelectorManager />
       <WebLoginManager />
       {/*<YouTubeLoginManager />*/}
       <VideoPlayerManager />
       <DownloadBall />
-    </>
+    </View>
   )}
