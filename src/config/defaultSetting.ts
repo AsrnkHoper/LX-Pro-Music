@@ -127,7 +127,8 @@ const defaultSetting: LX.AppSetting = {
   'stats.activeTab': 'overview',
   'stats.minPlayTime': 30,
   'stats.minPlayRatio': 50,
-  'stats.priority': 'time',
+  'stats.priority': 'timeFirst',
+  'stats.radarMode': 'month',
   'stats.heatColorMode': 'theme',
   'stats.heatStyle': 'calendar',
 

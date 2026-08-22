@@ -11,16 +11,22 @@ const getMinPlayRatio = () => (settingState.setting['stats.minPlayRatio'] ?? 50)
 const isAboveStatsThreshold = (nowPlayTime: number, maxPlayTime: number) => {
   const minPlayTime = getMinPlayTime()
   const minPlayRatio = getMinPlayRatio()
-  const priority = settingState.setting['stats.priority'] ?? 'time'
+  const priority = settingState.setting['stats.priority'] ?? 'timeFirst'
 
+  if (priority === 'time') {
+    return nowPlayTime >= minPlayTime
+  }
   if (priority === 'ratio') {
-    // 比例优先: 比例达标即可,时长未知时退化为秒数门槛
     if (maxPlayTime > 0) return nowPlayTime / maxPlayTime >= minPlayRatio
     return nowPlayTime >= minPlayTime
   }
-
-  // 秒数优先(默认): 短歌听完才入,普通歌需同时满足秒数与比例
-  if (maxPlayTime > 0 && maxPlayTime < minPlayTime) return nowPlayTime >= maxPlayTime
+  if (priority === 'ratioFirst') {
+    if (maxPlayTime > 0) {
+      if (nowPlayTime / maxPlayTime < minPlayRatio) return false
+    } else if (nowPlayTime < minPlayTime) return false
+    return nowPlayTime >= minPlayTime
+  }
+  // 都满足,先看秒数(默认)
   if (nowPlayTime < minPlayTime) return false
   if (maxPlayTime > 0 && nowPlayTime / maxPlayTime < minPlayRatio) return false
   return true

@@ -122,16 +122,42 @@ export const getThemeHeatColors = (primaryColor: string): string[] => {
   ]
 }
 
+const rgbToHsl = ([r, g, b]: [number, number, number]): [number, number, number] => {
+  const rn = r / 255
+  const gn = g / 255
+  const bn = b / 255
+  const max = Math.max(rn, gn, bn)
+  const min = Math.min(rn, gn, bn)
+  const l = (max + min) / 2
+  if (max === min) return [0, 0, l]
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h = 0
+  if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6
+  else if (max === gn) h = ((bn - rn) / d + 2) / 6
+  else h = ((rn - gn) / d + 4) / 6
+  return [h, s, l]
+}
+
+const hslToCss = (h: number, s: number, l: number) =>
+  `hsl(${Math.round(h * 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`
+
 /**
- * 莫奈取色 5 级色阶(由浅到深,睡莲蓝紫色系)
+ * 莫奈取色(Android 12 Monet 动态配色风格)
+ * 基于种子色生成 Material You 风格的 5 级 tonal palette(由浅到深)。
+ * 种子色取当前主题色;真实 Android 12 会从壁纸提取种子色,这里用 App 主题色作为种子。
  */
-export const MONET_HEAT_COLORS = [
-  '#f1edf7',
-  '#d8cde8',
-  '#ae93cf',
-  '#7d5aa5',
-  '#4d3575',
-]
+export const getMonetHeatColors = (seedColor: string): string[] => {
+  const seed = parseRgb(seedColor) ?? [77, 175, 124]
+  const [h, s] = rgbToHsl(seed)
+  const tones = [90, 70, 50, 30, 10]
+  return tones.map((tone) => {
+    const l = tone / 100
+    // Material You tonal palette 在两端降饱和,中间保持较高彩度
+    const sat = s * (1 - Math.abs(tone - 50) / 100)
+    return hslToCss(h, Math.max(0.08, sat), l)
+  })
+}
 
 /**
  * 统一热力取色
@@ -146,7 +172,7 @@ export const getHeatColor = (
   if (duration <= 0) return 'rgba(128,128,128,0.12)'
   if (mode === 'classic') return getClassicHeatColor(duration, maxDuration)
 
-  const colors = mode === 'monet' ? MONET_HEAT_COLORS : getThemeHeatColors(primaryColor)
+  const colors = mode === 'monet' ? getMonetHeatColors(primaryColor) : getThemeHeatColors(primaryColor)
   const ratio = Math.sqrt(duration / Math.max(maxDuration, 1))
   const index = Math.max(0, Math.min(colors.length - 1, Math.floor(ratio * colors.length)))
   return colors[index]

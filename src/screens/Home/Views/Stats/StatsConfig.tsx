@@ -52,24 +52,49 @@ const StatsConfig = memo(() => {
         placeholder="50"
       />
       <View style={styles.priorityBlock}>
-        <Text size={13} color={theme['c-font']} style={styles.priorityLabel}>统计优先级</Text>
+        <Text size={13} color={theme['c-font']} style={styles.priorityLabel}>统计方式</Text>
         <Text size={11} color={theme['c-500']} style={styles.priorityDesc}>
-          秒数优先:短歌需听完,普通歌需同时满足秒数与比例;比例优先:播放比例达标即计入
+          仅秒数:只看最低计入秒数;仅比例:只看最低播放比例;都满足:两个条件都达标才计入
         </Text>
         <View style={styles.priorityRow}>
           <TouchableOpacity
             style={[styles.priorityChip, { borderColor: priority === 'time' ? theme['c-primary'] : theme['c-border-background'] }]}
             onPress={() => updateSetting({ 'stats.priority': 'time' })}
           >
-            <Text size={13} color={priority === 'time' ? theme['c-primary'] : theme['c-font']}>秒数优先</Text>
+            <Text size={13} color={priority === 'time' ? theme['c-primary'] : theme['c-font']}>仅秒数</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.priorityChip, { borderColor: priority === 'ratio' ? theme['c-primary'] : theme['c-border-background'] }]}
             onPress={() => updateSetting({ 'stats.priority': 'ratio' })}
           >
-            <Text size={13} color={priority === 'ratio' ? theme['c-primary'] : theme['c-font']}>比例优先</Text>
+            <Text size={13} color={priority === 'ratio' ? theme['c-primary'] : theme['c-font']}>仅比例</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.priorityChip, { borderColor: priority === 'timeFirst' || priority === 'ratioFirst' ? theme['c-primary'] : theme['c-border-background'] }]}
+            onPress={() => updateSetting({ 'stats.priority': priority === 'timeFirst' || priority === 'ratioFirst' ? priority : 'timeFirst' })}
+          >
+            <Text size={13} color={priority === 'timeFirst' || priority === 'ratioFirst' ? theme['c-primary'] : theme['c-font']}>都满足</Text>
           </TouchableOpacity>
         </View>
+        {priority === 'timeFirst' || priority === 'ratioFirst' ? (
+          <View style={styles.priorityOrderBlock}>
+            <Text size={12} color={theme['c-font']} style={styles.priorityOrderLabel}>优先检查</Text>
+            <View style={styles.priorityRow}>
+              <TouchableOpacity
+                style={[styles.priorityChip, { borderColor: priority === 'timeFirst' ? theme['c-primary'] : theme['c-border-background'] }]}
+                onPress={() => updateSetting({ 'stats.priority': 'timeFirst' })}
+              >
+                <Text size={13} color={priority === 'timeFirst' ? theme['c-primary'] : theme['c-font']}>秒数</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.priorityChip, { borderColor: priority === 'ratioFirst' ? theme['c-primary'] : theme['c-border-background'] }]}
+                onPress={() => updateSetting({ 'stats.priority': 'ratioFirst' })}
+              >
+                <Text size={13} color={priority === 'ratioFirst' ? theme['c-primary'] : theme['c-font']}>比例</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
       </View>
     </View>
   )
@@ -101,7 +126,15 @@ const styles = createStyle({
   },
   priorityRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
+  },
+  priorityOrderBlock: {
+    marginTop: 10,
+  },
+  priorityOrderLabel: {
+    fontWeight: '600',
+    marginBottom: 6,
   },
   priorityChip: {
     paddingHorizontal: 14,

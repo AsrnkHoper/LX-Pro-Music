@@ -1,4 +1,4 @@
-name: Debug Build
+name: Release Build
 on:
   push:
     branches:
@@ -17,8 +17,8 @@ jobs:
         with:
           node-version: '18'
       - run: npm install
-      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - run: cd android && chmod +x gradlew && ./gradlew assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: release-apk
+          path: android/app/build/outputs/apk/release/*.apk

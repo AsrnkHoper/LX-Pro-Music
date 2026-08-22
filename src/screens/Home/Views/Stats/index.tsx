@@ -1,8 +1,9 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { InteractionManager, ScrollView, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
 import Image from '@/components/common/Image'
 import Badge from '@/components/common/Badge'
+import Popup, { type PopupType } from '@/components/common/Popup'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
@@ -22,6 +23,60 @@ import StatsConfig from './StatsConfig'
 import RadarChart from './RadarChart'
 import ActivityCompareChart from './ActivityCompareChart'
 import DonutChart from './DonutChart'
+
+const RADAR_MODES: Array<{ id: LX.AppSetting['stats.radarMode']; name: string }> = [
+  { id: 'day', name: '日画像' },
+  { id: 'week', name: '周画像' },
+  { id: 'month', name: '月画像' },
+  { id: 'year', name: '年画像' },
+  { id: 'full', name: '完整画像' },
+]
+
+const buildRadarData = (
+  events: LX.Stats.EventItem[],
+  allSongs: LX.Stats.SongItem[],
+  startTime: number,
+  endTime: number,
+  activeDays: number,
+  daysInPeriod: number
+) => {
+  const rangeEvents = events.filter((e) => e.playedAt >= startTime && e.playedAt <= endTime)
+  const eventCount = rangeEvents.length || 1
+
+  const songAgg = new Map<string, { name: string; singer: string; plays: number }>()
+  for (const e of rangeEvents) {
+    const id = e.musicInfo?.id ?? ''
+    if (!id) continue
+    const song = songAgg.get(id) ?? { name: e.musicInfo?.name ?? '', singer: e.musicInfo?.singer ?? '', plays: 0 }
+    song.plays += 1
+    songAgg.set(id, song)
+  }
+  const topSongLocal = Array.from(songAgg.values()).sort((a, b) => b.plays - a.plays)[0]
+
+  const lateNightCount = rangeEvents.filter((e) => {
+    const hour = new Date(e.playedAt).getHours()
+    return hour >= 23 || hour < 5
+  }).length
+
+  const completionAvg =
+    rangeEvents.length > 0
+      ? rangeEvents.reduce((sum, e) => sum + (e.maxTime > 0 ? Math.min(1, e.playTime / e.maxTime) : 0), 0) /
+        rangeEvents.length
+      : 0
+
+  const firstInRange = allSongs.filter(
+    (s) => s.firstPlayedAt >= startTime && s.firstPlayedAt <= endTime
+  ).length
+
+  return [
+    { label: '多样性', value: Math.min(1, songAgg.size / eventCount) },
+    { label: '深夜', value: Math.min(1, lateNightCount / eventCount) },
+    { label: '循环', value: topSongLocal ? Math.min(1, topSongLocal.plays / eventCount) : 0 },
+    { label: '完听', value: completionAvg },
+    { label: '活跃', value: Math.min(1, activeDays / Math.max(1, daysInPeriod)) },
+    { label: '探索', value: Math.min(1, firstInRange / Math.max(1, songAgg.size)) },
+  ]
+}
 
 const RankItem = memo(
   ({
@@ -123,7 +178,13 @@ const Stats = memo(() => {
   const [recentEvents, setRecentEvents] = useState<LX.Stats.EventItem[]>([])
   const [durationSongs, setDurationSongs] = useState<LX.Stats.SongItem[]>([])
   const [hourCounts, setHourCounts] = useState<number[]>(new Array(24).fill(0))
-  const [radarData, setRadarData] = useState<{ label: string; value: number }[]>([])
+  const [radarMode, setRadarMode] = useState<LX.AppSetting['stats.radarMode']>(
+    settingState.setting['stats.radarMode'] ?? 'month'
+  )
+  const [radarDataByMode, setRadarDataByMode] = useState<
+    Record<LX.AppSetting['stats.radarMode'], { label: string; value: number }[]>
+  >({ day: [], week: [], month: [], year: [], full: [] })
+  const radarPopupRef = useRef<PopupType>(null)
   const [activityMode, setActivityMode] = useState<'month' | 'year'>('month')
   const [monthCurrent, setMonthCurrent] = useState<number[]>([])
   const [monthPrevious, setMonthPrevious] = useState<number[]>([])
@@ -302,14 +363,38 @@ const Stats = memo(() => {
           monthActiveRate: Math.round(activeRate * 100),
         })
         setHourCounts(hourCount)
-        setRadarData([
-          { label: '多样性', value: Math.min(1, songAgg.size / monthTotal) },
-          { label: '深夜', value: Math.min(1, lateNightCount / monthTotal) },
-          { label: '循环', value: topSongLocal ? Math.min(1, topSongLocal.plays / monthTotal) : 0 },
-          { label: '完听', value: completionAvg },
-          { label: '活跃', value: Math.min(1, activeRate) },
-          { label: '探索', value: Math.min(1, firstThisMonth / Math.max(1, songAgg.size)) },
-        ])
+
+        // 听歌画像:日/周/月/年/完整 五档
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+        const weekStart = (() => {
+          const d = new Date(now)
+          d.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+          d.setHours(0, 0, 0, 0)
+          return d.getTime()
+        })()
+        const yearStart = new Date(now.getFullYear(), 0, 1).getTime()
+        const earliestDailyTime = daily.length
+          ? Math.min(...daily.map((d) => new Date(`${d.date}T00:00:00`).getTime()))
+          : todayStart
+
+        const activeDaysInRange = (start: number, end: number) =>
+          daily.filter((d) => {
+            const t = new Date(`${d.date}T00:00:00`).getTime()
+            return d.active && t >= start && t <= end
+          }).length
+
+        const dayActive = daily.some((d) => d.date === getTodayText() && d.active) ? 1 : 0
+        const daysElapsedWeek = Math.min(7, Math.max(1, Math.floor((Date.now() - weekStart) / 86400000) + 1))
+        const daysElapsedYear = Math.min(366, Math.max(1, Math.floor((Date.now() - yearStart) / 86400000) + 1))
+        const daysElapsedFull = Math.max(1, Math.floor((Date.now() - earliestDailyTime) / 86400000) + 1)
+
+        setRadarDataByMode({
+          day: buildRadarData(events, allSongs, todayStart, Date.now(), dayActive, 1),
+          week: buildRadarData(events, allSongs, weekStart, Date.now(), activeDaysInRange(weekStart, Date.now()), daysElapsedWeek),
+          month: buildRadarData(events, allSongs, monthStart, monthEnd, monthActiveDays, Math.min(daysElapsedMonth, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate())),
+          year: buildRadarData(events, allSongs, yearStart, yearEnd, activeDaysInRange(yearStart, yearEnd), daysElapsedYear),
+          full: buildRadarData(events, allSongs, 0, Date.now(), activeDays, daysElapsedFull),
+        })
 
         // 活跃时长对比
         const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
@@ -671,12 +756,20 @@ const Stats = memo(() => {
 
           {/* 听歌画像 */}
           <View style={styles.sectionHeader}>
-            <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>听歌画像</Text>
+            <View style={styles.sectionTitleWrap}>
+              <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>听歌画像</Text>
+              <TouchableOpacity
+                onPress={() => radarPopupRef.current?.setVisible(true)}
+                style={styles.switchStyleBtn}
+              >
+                <Text size={12} color={theme['c-primary']}>切换画像</Text>
+              </TouchableOpacity>
+            </View>
             <Text size={11} color={theme['c-500']}>六维本地计算</Text>
           </View>
           <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
             {chartsReady ? (
-              <RadarChart data={radarData} size={240} />
+              <RadarChart data={radarDataByMode[radarMode] ?? []} size={240} />
             ) : (
               <View style={styles.chartSkeleton} />
             )}
@@ -849,7 +942,7 @@ const Stats = memo(() => {
             )}
           </View>
         </ScrollView>
-  ), [theme, overview, monthOverview, yearOverview, topSongs, topArtists, recentEvents, durationSongs, hourCounts, habits, radarData, activityMode, monthCurrent, monthPrevious, yearCurrent, yearPrevious, sourceDistribution, chartsReady, monthFavorites, longTerm, showDetail, rankSongs, rankArtists, detailMap, handlePlaySong, handlePlayAllSongs, handleRandomPlaySongs, handlePlayAllEvents, handleRandomPlayEvents])
+  ), [theme, overview, monthOverview, yearOverview, topSongs, topArtists, recentEvents, durationSongs, hourCounts, habits, radarDataByMode, radarMode, activityMode, monthCurrent, monthPrevious, yearCurrent, yearPrevious, sourceDistribution, chartsReady, monthFavorites, longTerm, showDetail, rankSongs, rankArtists, detailMap, handlePlaySong, handlePlayAllSongs, handleRandomPlaySongs, handlePlayAllEvents, handleRandomPlayEvents])
 
   const calendarPage = useMemo(() => (
         <ScrollView
@@ -908,6 +1001,30 @@ const Stats = memo(() => {
       {mountedTabs.has('overview') ? <TabPageShell active={activeTab === 'overview'}>{overviewPage}</TabPageShell> : null}
       {mountedTabs.has('calendar') ? <TabPageShell active={activeTab === 'calendar'}>{calendarPage}</TabPageShell> : null}
       {mountedTabs.has('config') ? <TabPageShell active={activeTab === 'config'}>{configPage}</TabPageShell> : null}
+
+      <Popup ref={radarPopupRef} title="切换画像">
+        <View style={styles.radarPopupContent}>
+          {RADAR_MODES.map((mode) => (
+            <TouchableOpacity
+              key={mode.id}
+              style={[
+                styles.radarPopupOption,
+                {
+                  borderColor: radarMode === mode.id ? theme['c-primary'] : theme['c-border-background'],
+                  backgroundColor: radarMode === mode.id ? theme['c-primary-alpha-900'] : 'transparent',
+                },
+              ]}
+              onPress={() => {
+                setRadarMode(mode.id)
+                updateSetting({ 'stats.radarMode': mode.id })
+                radarPopupRef.current?.setVisible(false)
+              }}
+            >
+              <Text size={13} color={radarMode === mode.id ? theme['c-primary'] : theme['c-font']}>{mode.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Popup>
     </View>
   )
 })
@@ -1049,6 +1166,17 @@ const styles = createStyle({
     justifyContent: 'space-between',
     marginBottom: 10,
   },
+  sectionTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  switchStyleBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(77,175,124,0.12)',
+  },
   sectionHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1126,6 +1254,20 @@ const styles = createStyle({
   },
   rankValueText: {
     fontWeight: '700',
+  },
+  radarPopupContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  radarPopupOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
   },
   aiCard: {
     borderRadius: 20,

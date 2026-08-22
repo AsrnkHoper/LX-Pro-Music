@@ -108,14 +108,24 @@ const pollPlayPosition = () => {
     if (delta > 0 && delta < MAX_CONTINUOUS_DELTA) {
       s.accumulatedTime += delta
       if (!s.isEffective) {
-        const priority = settingState.setting['stats.priority'] ?? 'time'
-        if (priority === 'ratio') {
+        const priority = settingState.setting['stats.priority'] ?? 'timeFirst'
+        if (priority === 'time') {
+          if (s.accumulatedTime >= getMinPlayTime()) s.isEffective = true
+        } else if (priority === 'ratio') {
           if (s.maxTime > 0 ? s.accumulatedTime / s.maxTime >= getMinPlayRatio() : s.accumulatedTime >= getMinPlayTime()) {
             s.isEffective = true
           }
+        } else if (priority === 'ratioFirst') {
+          if (s.maxTime > 0) {
+            if (s.accumulatedTime / s.maxTime >= getMinPlayRatio() && s.accumulatedTime >= getMinPlayTime()) {
+              s.isEffective = true
+            }
+          } else if (s.accumulatedTime >= getMinPlayTime()) {
+            s.isEffective = true
+          }
         } else if (
-          s.accumulatedTime >= getMinPlayTime() ||
-          (s.maxTime > 0 && s.accumulatedTime / s.maxTime >= getMinPlayRatio())
+          s.accumulatedTime >= getMinPlayTime() &&
+          (s.maxTime <= 0 || s.accumulatedTime / s.maxTime >= getMinPlayRatio())
         ) {
           s.isEffective = true
         }

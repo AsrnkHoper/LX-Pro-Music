@@ -76,16 +76,24 @@ export const addStatsRecord = async (params: {
   const minPlayTime = settingState.setting['stats.minPlayTime'] ?? MIN_RECORD_TIME
   const minPlayRatio = (settingState.setting['stats.minPlayRatio'] ?? 50) / 100
   const ratio = maxTime > 0 ? playTime / maxTime : 0
-  const priority = settingState.setting['stats.priority'] ?? 'time'
+  const priority = settingState.setting['stats.priority'] ?? 'timeFirst'
 
-  if (priority === 'ratio') {
-    // 比例优先:只要播放比例达标即可计入,时长未知时退化为秒数门槛
+  if (priority === 'time') {
+    // 仅看秒数
+    if (playTime < minPlayTime) return
+  } else if (priority === 'ratio') {
+    // 仅看比例,时长未知时退化为秒数门槛
     if (maxTime > 0 ? ratio < minPlayRatio : playTime < minPlayTime) return
-  } else if (maxTime > 0 && maxTime < minPlayTime) {
-    // 秒数优先:短歌(<设定秒数)听完才入
-    if (playTime < maxTime) return
-  } else if (playTime < minPlayTime || ratio < minPlayRatio) {
-    return
+  } else if (priority === 'ratioFirst') {
+    // 都满足,先看比例
+    if (maxTime > 0) {
+      if (ratio < minPlayRatio) return
+      if (playTime < minPlayTime) return
+    } else if (playTime < minPlayTime) return
+  } else {
+    // 都满足,先看秒数(默认)
+    if (playTime < minPlayTime) return
+    if (maxTime > 0 && ratio < minPlayRatio) return
   }
 
   const date = getHistoryDay(playedAt)

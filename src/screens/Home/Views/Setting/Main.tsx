@@ -10,6 +10,7 @@ import {
 import {
   Animated,
   ScrollView,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
   View,
@@ -207,7 +208,9 @@ interface SettingsViewProps {
 const SettingsView = forwardRef<MainType, SettingsViewProps>(({ showCategoryNav = true }, ref) => {
   const theme = useTheme()
   const t = useI18n()
-  const [activeId, setActiveId] = useState<SettingScreenIds>(() => normalizeSettingId(global.lx.settingActiveId))
+  const [activeId, setActiveId] = useState<SettingScreenIds | null>(() =>
+    showCategoryNav ? null : normalizeSettingId(global.lx.settingActiveId)
+  )
   const [searchText, setSearchText] = useState('')
   const [showTop, setShowTop] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
@@ -220,7 +223,7 @@ const SettingsView = forwardRef<MainType, SettingsViewProps>(({ showCategoryNav 
   }))
 
   useEffect(() => {
-    global.lx.settingActiveId = activeId
+    if (activeId) global.lx.settingActiveId = activeId
   }, [activeId])
 
   useEffect(() => {
@@ -233,6 +236,7 @@ const SettingsView = forwardRef<MainType, SettingsViewProps>(({ showCategoryNav 
 
   const handleSelectCategory = useCallback((id: SettingScreenIds) => {
     setActiveId(id)
+    setSearchText('')
     global.lx.settingActiveId = id
     scrollRef.current?.scrollTo({ y: 0, animated: false })
   }, [])
@@ -280,8 +284,23 @@ const SettingsView = forwardRef<MainType, SettingsViewProps>(({ showCategoryNav 
     )
   }
 
+  const renderRootList = () => (
+    <View style={styles.rootList}>
+      {SETTING_SCREENS.map((id, index) => (
+        <TouchableOpacity
+          key={id}
+          style={[styles.rootRow, index < SETTING_SCREENS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme['c-border-background'] }]}
+          onPress={() => handleSelectCategory(id)}
+        >
+          <Text size={15} color={theme['c-font']} style={styles.rootRowText}>{t(`setting_${id}`)}</Text>
+          <Text size={22} color={theme['c-500']}>›</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  )
+
   const renderCategoryContent = () => (
-    <Section title={t(`setting_${activeId}`)}>
+    <Section title={t(`setting_${activeId ?? 'basic'}`)}>
       {currentItems.map(renderItem)}
     </Section>
   )
@@ -327,30 +346,15 @@ const SettingsView = forwardRef<MainType, SettingsViewProps>(({ showCategoryNav 
         ) : null}
       </View>
 
-      {showCategoryNav ? (
-        <View style={[styles.navWrap, { borderBottomColor: theme['c-border-background'] }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always">
-            {SETTING_SCREENS.map((id) => {
-              const active = id === activeId && !query
-              return (
-                <TouchableOpacity
-                  key={id}
-                  style={[
-                    styles.navChip,
-                    {
-                      backgroundColor: active ? theme['c-primary'] : 'transparent',
-                      borderColor: active ? theme['c-primary'] : theme['c-border-background'],
-                    },
-                  ]}
-                  onPress={() => handleSelectCategory(id)}
-                >
-                  <Text size={12} color={active ? '#fff' : theme['c-font']}>
-                    {t(`setting_${id}`)}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </ScrollView>
+      {showCategoryNav && activeId && !query ? (
+        <View style={[styles.subHeader, { borderBottomColor: theme['c-border-background'] }]}>
+          <TouchableOpacity style={styles.subHeaderBack} onPress={() => { setActiveId(null); setSearchText('') }}>
+            <Text size={15} color={theme['c-primary']}>‹ 返回</Text>
+          </TouchableOpacity>
+          <Text size={16} color={theme['c-font']} style={styles.subHeaderTitle} numberOfLines={1}>
+            {t(`setting_${activeId}`)}
+          </Text>
+          <View style={styles.subHeaderPlaceholder} />
         </View>
       ) : null}
 
@@ -365,7 +369,7 @@ const SettingsView = forwardRef<MainType, SettingsViewProps>(({ showCategoryNav 
           setShowTop(y > 200)
         }}
       >
-        {query ? renderSearchContent() : renderCategoryContent()}
+        {query ? renderSearchContent() : activeId ? renderCategoryContent() : renderRootList()}
       </ScrollView>
 
       <Animated.View
@@ -407,16 +411,36 @@ const styles = createStyle({
     right: 28,
     top: 22,
   },
-  navWrap: {
-    paddingBottom: 8,
+  rootList: {
+    flex: 1,
+  },
+  rootRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  rootRowText: {
+    flex: 1,
+  },
+  subHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: 42,
     borderBottomWidth: 1,
   },
-  navChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginLeft: 10,
+  subHeaderBack: {
+    width: 72,
+  },
+  subHeaderTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontWeight: '700',
+  },
+  subHeaderPlaceholder: {
+    width: 72,
   },
   scroll: {
     flex: 1,

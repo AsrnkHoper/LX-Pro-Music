@@ -16,9 +16,9 @@ import {
   getClassicHeatColor,
   getHeatColor,
   getMonthDays,
+  getMonetHeatColors,
   getThemeHeatColors,
   getTodayText,
-  MONET_HEAT_COLORS,
   parseDateText,
   toDateText,
   toMonthText,
@@ -55,8 +55,10 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
   const [maxYearDuration, setMaxYearDuration] = useState(0)
   const [dayEvents, setDayEvents] = useState<LX.Stats.EventItem[]>([])
   const [pendingDeleteDate, setPendingDeleteDate] = useState<string | null>(null)
+  const [gitHubViewWidth, setGitHubViewWidth] = useState(0)
   const deleteConfirmRef = useRef<ConfirmAlertType>(null)
   const stylePopupRef = useRef<PopupType>(null)
+  const gitHubScrollRef = useRef<ScrollView>(null)
 
   const heatColorMode = useSettingValue('stats.heatColorMode')
   const heatStyle = useSettingValue('stats.heatStyle')
@@ -153,6 +155,21 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
     })
     return { start, weeks, monthLabels }
   }, [year, yearHeatMap, todayText])
+
+  useEffect(() => {
+    if (heatStyle !== 'grid' || !gitHubViewWidth) return
+    const now = new Date()
+    const centerMonth = year === now.getFullYear()
+      ? now.getMonth()
+      : year === viewMonth.getFullYear()
+        ? viewMonth.getMonth()
+        : 6
+    const label = githubYearData.monthLabels[centerMonth]
+    if (!label) return
+    const cellStep = GITHUB_CELL_SIZE + GITHUB_GAP
+    const x = label.weekIndex * cellStep - gitHubViewWidth / 2 + cellStep / 2
+    gitHubScrollRef.current?.scrollTo({ x: Math.max(0, x), animated: false })
+  }, [heatStyle, gitHubViewWidth, year, viewMonth, githubYearData.monthLabels])
 
   const selectedDuration = (heatStyle === 'grid' ? yearHeatMap : heatMap).get(selectedDate) ?? 0
 
@@ -304,7 +321,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
         getClassicHeatColor(((i + 0.5) / 12) * Math.max(maxDuration, 1), maxDuration)
       )
     } else if (heatColorMode === 'monet') {
-      colors = MONET_HEAT_COLORS
+      colors = getMonetHeatColors(theme['c-primary'])
     } else {
       colors = getThemeHeatColors(theme['c-primary'])
     }
@@ -393,7 +410,13 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
             </Text>
           ))}
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gitHubScroll}>
+        <ScrollView
+          ref={gitHubScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.gitHubScroll}
+          onLayout={(event) => setGitHubViewWidth(event.nativeEvent.layout.width)}
+        >
           <View>
             <View style={styles.gitHubGrid}>
               {githubYearData.weeks.map((week, weekIndex) => (
@@ -449,7 +472,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
         <View style={styles.sectionTitleWrap}>
           <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>月度热力</Text>
           <TouchableOpacity onPress={() => stylePopupRef.current?.setVisible(true)} style={styles.switchStyleBtn}>
-            <Text size={12} color={theme['c-primary']}>[切换样式]</Text>
+            <Text size={12} color={theme['c-primary']}>切换样式</Text>
           </TouchableOpacity>
         </View>
         <Text size={11} color={theme['c-500']}>长按格子可删除当天数据</Text>
@@ -525,7 +548,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
           <Text size={14} color={theme['c-font']} style={styles.popupLabel}>颜色自定义</Text>
           <View style={styles.popupOptions}>
             {[
-              { id: 'theme' as const, name: '主题色(默认)' },
+              { id: 'theme' as const, name: '主题色' },
               { id: 'classic' as const, name: '绿到红' },
               { id: 'monet' as const, name: '莫奈取色' },
             ].map((item) => (
@@ -548,7 +571,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
           <Text size={14} color={theme['c-font']} style={styles.popupLabel}>热力图样式自定义</Text>
           <View style={styles.popupOptions}>
             {[
-              { id: 'calendar' as const, name: '日历式(默认)' },
+              { id: 'calendar' as const, name: '日历式' },
               { id: 'grid' as const, name: 'GitHub 式' },
             ].map((item) => (
               <TouchableOpacity

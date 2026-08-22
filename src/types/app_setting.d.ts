@@ -395,8 +395,10 @@ declare global {
       'stats.activeTab': 'overview' | 'calendar' | 'config'
       'stats.minPlayTime': number
       'stats.minPlayRatio': number
-      /** 统计口径优先级: time = 秒数优先, ratio = 比例优先 */
-      'stats.priority': 'time' | 'ratio'
+      /** 统计口径模式: time=仅秒数, ratio=仅比例, timeFirst=都满足且秒数优先, ratioFirst=都满足且比例优先 */
+      'stats.priority': 'time' | 'ratio' | 'timeFirst' | 'ratioFirst'
+      /** 听歌画像周期: day/week/month/year/full */
+      'stats.radarMode': 'day' | 'week' | 'month' | 'year' | 'full'
       /** 热力图颜色模式: theme = 主题色5级, classic = 绿到红, monet = 莫奈5级 */
       'stats.heatColorMode': 'theme' | 'classic' | 'monet'
       /** 热力图样式: calendar = 日历式, grid = GitHub 式 */

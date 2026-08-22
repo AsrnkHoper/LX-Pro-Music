@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from 'react'
-import {Keyboard, View} from 'react-native'
+import {Keyboard, PanResponder, View} from 'react-native'
 import Search from '../Views/Search'
 import SongList from '../Views/SongList'
 import Mylist from '../Views/Mylist'
@@ -469,6 +469,19 @@ const SettingPage = () => {
 
 const Main = () => {
   const pagerViewRef = useRef<ComponentRef<typeof PagerView>>(null);
+  const drawerPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        const { dx, dy, x0 } = gestureState
+        return Math.abs(dx) > Math.abs(dy) && dx > 12 && x0 < 60
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dx > 40) {
+          global.app_event.changeMenuVisible(true)
+        }
+      },
+    })
+  ).current;
   const [activeNavId, setActiveNavIdState] = useState(commonState.navActiveId)
   const navStatus = useSettingValue('common.navStatus'); // 获取菜单显示状态
   const navOrder = useSettingValue('common.navOrder'); // 获取菜单排序
@@ -608,14 +621,14 @@ const Main = () => {
   }, [visibleNavs]);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...drawerPanResponder.panHandlers}>
       <PagerView
         ref={pagerViewRef}
         initialPage={activeIndexRef.current}
         offscreenPageLimit={1}
         onPageSelected={onPageSelected}
         onPageScrollStateChanged={onPageScrollStateChanged}
-        scrollEnabled={settingState.setting['common.homePageScroll'] && activeNavId !== 'nav_play_history'}
+        scrollEnabled={false}
         style={styles.pagerView}
       >
         {pages}
