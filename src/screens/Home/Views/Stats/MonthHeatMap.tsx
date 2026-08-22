@@ -158,12 +158,7 @@ const MonthHeatMap = memo(({ selectedDate, onSelectDate, showDetail, onToggleDet
 
   useEffect(() => {
     if (heatStyle !== 'grid' || !gitHubViewWidth) return
-    const now = new Date()
-    const centerMonth = year === now.getFullYear()
-      ? now.getMonth()
-      : year === viewMonth.getFullYear()
-        ? viewMonth.getMonth()
-        : 6
+    const centerMonth = viewMonth.getMonth()
     const label = githubYearData.monthLabels[centerMonth]
     if (!label) return
     const cellStep = GITHUB_CELL_SIZE + GITHUB_GAP

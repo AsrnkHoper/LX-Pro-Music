@@ -9,13 +9,11 @@
 import { AppState } from 'react-native'
 import BackgroundTimer from 'react-native-background-timer'
 import playerState from '@/store/player/state'
-import settingState from '@/store/setting/state'
 import { addStatsRecordQueued, backfillStatsFromHistory, getStatsDaily, getStatsEvents, getStatsSong } from '@/core/player/stats'
+import { isAboveStatsThreshold } from '@/core/player/statsThreshold'
 import { isOneDriveMusicInfo } from '@/core/oneDrive/utils'
 import { getPosition, getDuration } from '@/plugins/player'
 
-const getMinPlayTime = () => settingState.setting['stats.minPlayTime'] ?? 30
-const getMinPlayRatio = () => (settingState.setting['stats.minPlayRatio'] ?? 50) / 100
 const POLL_INTERVAL_MS = 2000
 const MAX_CONTINUOUS_DELTA = 60 * 60
 
@@ -107,28 +105,8 @@ const pollPlayPosition = () => {
     const delta = position - s.lastProgressTime
     if (delta > 0 && delta < MAX_CONTINUOUS_DELTA) {
       s.accumulatedTime += delta
-      if (!s.isEffective) {
-        const priority = settingState.setting['stats.priority'] ?? 'timeFirst'
-        if (priority === 'time') {
-          if (s.accumulatedTime >= getMinPlayTime()) s.isEffective = true
-        } else if (priority === 'ratio') {
-          if (s.maxTime > 0 ? s.accumulatedTime / s.maxTime >= getMinPlayRatio() : s.accumulatedTime >= getMinPlayTime()) {
-            s.isEffective = true
-          }
-        } else if (priority === 'ratioFirst') {
-          if (s.maxTime > 0) {
-            if (s.accumulatedTime / s.maxTime >= getMinPlayRatio() && s.accumulatedTime >= getMinPlayTime()) {
-              s.isEffective = true
-            }
-          } else if (s.accumulatedTime >= getMinPlayTime()) {
-            s.isEffective = true
-          }
-        } else if (
-          s.accumulatedTime >= getMinPlayTime() &&
-          (s.maxTime <= 0 || s.accumulatedTime / s.maxTime >= getMinPlayRatio())
-        ) {
-          s.isEffective = true
-        }
+      if (!s.isEffective && isAboveStatsThreshold(s.accumulatedTime, s.maxTime)) {
+        s.isEffective = true
       }
     }
     s.lastProgressTime = position
@@ -137,7 +115,6 @@ const pollPlayPosition = () => {
 
 export default () => {
   void backfillStatsFromHistory()
-  console.log('STATS_REBUILD_20260819')
 
   global.app_event.on('musicToggled', handleMusicToggled)
   global.app_event.on('pause', handlePause)

@@ -93,7 +93,7 @@ const SongListPage = () => {
       global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
       global.state_event.off('themeUpdated', handleHide)
       global.state_event.off('languageChanged', handleHide)
-      global.state_event.on('configUpdated', handleConfigUpdated)
+      global.state_event.off('configUpdated', handleConfigUpdated)
     }
   }, [])
 
@@ -155,7 +155,7 @@ const LeaderboardPage = () => {
       global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
       global.state_event.off('themeUpdated', handleHide)
       global.state_event.off('languageChanged', handleHide)
-      global.state_event.on('configUpdated', handleConfigUpdated)
+      global.state_event.off('configUpdated', handleConfigUpdated)
     }
   }, [])
 
@@ -191,7 +191,7 @@ const DailyRecPage = () => {
       global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
       global.state_event.off('themeUpdated', handleHide)
       global.state_event.off('languageChanged', handleHide)
-      global.state_event.on('configUpdated', handleConfigUpdated)
+      global.state_event.off('configUpdated', handleConfigUpdated)
     }
   }, [])
 
@@ -227,7 +227,7 @@ const MylistPage = () => {
       global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
       global.state_event.off('themeUpdated', handleHide)
       global.state_event.off('languageChanged', handleHide)
-      global.state_event.on('configUpdated', handleConfigUpdated)
+      global.state_event.off('configUpdated', handleConfigUpdated)
     }
   }, [])
 
@@ -263,7 +263,7 @@ const MyPlaylistPage = () => {
             global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
             global.state_event.off('themeUpdated', handleHide)
             global.state_event.off('languageChanged', handleHide)
-            global.state_event.on('configUpdated', handleConfigUpdated)
+            global.state_event.off('configUpdated', handleConfigUpdated)
           }
       }, [])
 
@@ -299,7 +299,7 @@ const FollowedArtistsPage = () => {
       global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
       global.state_event.off('themeUpdated', handleHide)
       global.state_event.off('languageChanged', handleHide)
-      global.state_event.on('configUpdated', handleConfigUpdated)
+      global.state_event.off('configUpdated', handleConfigUpdated)
     }
   }, [])
 
@@ -335,7 +335,7 @@ const SubscribedAlbumsPage = () => {
       global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
       global.state_event.off('themeUpdated', handleHide)
       global.state_event.off('languageChanged', handleHide)
-      global.state_event.on('configUpdated', handleConfigUpdated)
+      global.state_event.off('configUpdated', handleConfigUpdated)
     }
   }, []);
   return visible ? component : null;
@@ -580,19 +580,9 @@ const Main = () => {
         pagerViewRef.current?.setPageWithoutAnimation(index);
       }
     };
-    const handleConfigUpdate = (
-      keys: Array<keyof LX.AppSetting>,
-      setting: Partial<LX.AppSetting>
-    ) => {
-      if (!keys.includes('common.homePageScroll')) return;
-      pagerViewRef.current?.setScrollEnabled(false);
-    };
-
     global.state_event.on('navActiveIdUpdated', handleUpdate);
-    global.state_event.on('configUpdated', handleConfigUpdate);
     return () => {
       global.state_event.off('navActiveIdUpdated', handleUpdate);
-      global.state_event.off('configUpdated', handleConfigUpdate);
     };
   }, [viewMap, visibleNavs]);
 

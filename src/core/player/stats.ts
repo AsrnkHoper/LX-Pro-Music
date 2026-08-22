@@ -6,14 +6,14 @@
  *  - @stats_song   歌曲维度(永久)
  *  - @stats_events 原始事件(90 天)
  *
- * 口径:
- *  - 有效收听:累计 ≥120s 或 ≥50%
- *  - 入账本:播放 ≥50% 且 ≥30 秒(短歌 <30s 则要求听完)
+ * 口径(可通过 stats.priority / stats.minPlayTime / stats.minPlayRatio 调整,默认 timeFirst):
+ *  - 同时满足 ≥30 秒且 ≥50% 才计入有效播放
+ *  - time:仅看秒数;ratio:仅看比例(时长未知时退化为秒数)
  */
 import { storageDataPrefix } from '@/config/constant'
-import settingState from '@/store/setting/state'
 import { getData, getDataMultiple, saveDataMultiple } from '@/plugins/storage'
 import { getPlayHistory } from '@/utils/data'
+import { isAboveStatsThreshold } from '@/core/player/statsThreshold'
 
 const statsDailyKey = storageDataPrefix.statsDaily
 const statsSongKey = storageDataPrefix.statsSong
@@ -21,8 +21,6 @@ const statsEventsKey = storageDataPrefix.statsEvents
 
 const DAY = 24 * 60 * 60 * 1000
 const MAX_EVENT_DAYS = 90
-const MIN_RECORD_TIME = 30
-const MIN_RECORD_RATIO = 0.5
 
 // 轻量内存缓存:统计页频繁读取时避免反复 JSON.parse 大数组
 let dailyCache: LX.Stats.DailyItem[] | null = null
@@ -72,29 +70,8 @@ export const addStatsRecord = async (params: {
 }) => {
   const { musicInfo, playedAt, playTime, maxTime, isEffective } = params
 
-  // 入账门槛:读取用户配置与优先级
-  const minPlayTime = settingState.setting['stats.minPlayTime'] ?? MIN_RECORD_TIME
-  const minPlayRatio = (settingState.setting['stats.minPlayRatio'] ?? 50) / 100
-  const ratio = maxTime > 0 ? playTime / maxTime : 0
-  const priority = settingState.setting['stats.priority'] ?? 'timeFirst'
-
-  if (priority === 'time') {
-    // 仅看秒数
-    if (playTime < minPlayTime) return
-  } else if (priority === 'ratio') {
-    // 仅看比例,时长未知时退化为秒数门槛
-    if (maxTime > 0 ? ratio < minPlayRatio : playTime < minPlayTime) return
-  } else if (priority === 'ratioFirst') {
-    // 都满足,先看比例
-    if (maxTime > 0) {
-      if (ratio < minPlayRatio) return
-      if (playTime < minPlayTime) return
-    } else if (playTime < minPlayTime) return
-  } else {
-    // 都满足,先看秒数(默认)
-    if (playTime < minPlayTime) return
-    if (maxTime > 0 && ratio < minPlayRatio) return
-  }
+  // 入账门槛:统一走 statsThreshold,避免与播放历史/埋点口径漂移
+  if (!isAboveStatsThreshold(playTime, maxTime)) return
 
   const date = getHistoryDay(playedAt)
   const [dailyResult, songResult, eventResult] = await getDataMultiple([
@@ -254,6 +231,9 @@ export const backfillStatsFromHistory = async () => {
   const songMap = new Map<string, LX.Stats.SongItem>()
 
   for (const item of history) {
+    // 回填同样遵守当前统计口径,避免与后续实时记录口径不一致
+    if (!isAboveStatsThreshold(item.playTime, item.maxTime)) continue
+
     const date = getHistoryDay(item.playedAt)
     const songId = item.musicInfo.id ?? ''
 
