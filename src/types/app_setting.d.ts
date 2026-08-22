@@ -84,6 +84,8 @@ declare global {
 
       'common.isShowStartupGreeting': boolean
       'common.hideNavigationBar': boolean
+      'common.oobeFinished': boolean
+      'common.startupNavId': NAV_ID_Type
       'common.isEnableWebDAVLog': boolean
       'common.aiEndpoint': string
       'common.aiApiKey': string

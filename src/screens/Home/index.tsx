@@ -9,7 +9,7 @@ import { navigations } from '@/navigation'
 import ArtistSelectorManager from '@/components/ArtistSelectorManager'
 import settingState from '@/store/setting/state'
 import {useI18n} from "@/lang";
-import {BackHandler} from "react-native";
+import {BackHandler, View} from "react-native";
 import {toast} from "@/utils/tools.ts";
 import commonState from '@/store/common/state'
 import {useBackHandler} from "@/utils/hooks/useBackHandler.ts";
@@ -19,6 +19,7 @@ import WebLoginManager from "@/components/WebLoginManager.tsx";
 import DownloadBall from "@/components/DownloadBall";
 import YouTubeLoginManager from "@/components/YouTubeLoginManager.tsx";
 import VideoPlayerManager from "@/components/VideoPlayerManager.tsx";
+import Oobe from './Views/Oobe';
 interface Props {
   componentId: string
 }

@@ -1,9 +1,8 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { InteractionManager, ScrollView, TouchableOpacity, View } from 'react-native'
 import Text from '@/components/common/Text'
 import Image from '@/components/common/Image'
 import Badge from '@/components/common/Badge'
-import Popup, { type PopupType } from '@/components/common/Popup'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
@@ -184,7 +183,7 @@ const Stats = memo(() => {
   const [radarDataByMode, setRadarDataByMode] = useState<
     Record<LX.AppSetting['stats.radarMode'], { label: string; value: number }[]>
   >({ day: [], week: [], month: [], year: [], full: [] })
-  const radarPopupRef = useRef<PopupType>(null)
+  const [radarPickerOpen, setRadarPickerOpen] = useState(false)
   const [activityMode, setActivityMode] = useState<'month' | 'year'>('month')
   const [monthCurrent, setMonthCurrent] = useState<number[]>([])
   const [monthPrevious, setMonthPrevious] = useState<number[]>([])
@@ -759,14 +758,38 @@ const Stats = memo(() => {
             <View style={styles.sectionTitleWrap}>
               <Text size={17} color={theme['c-font']} style={styles.sectionTitle}>听歌画像</Text>
               <TouchableOpacity
-                onPress={() => radarPopupRef.current?.setVisible(true)}
+                onPress={() => setRadarPickerOpen((v) => !v)}
                 style={styles.switchStyleBtn}
               >
-                <Text size={12} color={theme['c-primary']}>切换画像</Text>
+                <Text size={12} color={theme['c-primary']}>{radarPickerOpen ? '收起画像' : '切换画像'}</Text>
               </TouchableOpacity>
             </View>
             <Text size={11} color={theme['c-500']}>六维本地计算</Text>
           </View>
+          {radarPickerOpen ? (
+            <View style={[styles.radarPickerCard, { backgroundColor: theme['c-primary-background'] }]}>
+              <View style={styles.radarPickerContent}>
+                {RADAR_MODES.map((mode) => (
+                  <TouchableOpacity
+                    key={mode.id}
+                    style={[
+                      styles.radarPickerOption,
+                      {
+                        borderColor: radarMode === mode.id ? theme['c-primary'] : theme['c-border-background'],
+                        backgroundColor: radarMode === mode.id ? theme['c-primary-alpha-900'] : 'transparent',
+                      },
+                    ]}
+                    onPress={() => {
+                      setRadarMode(mode.id)
+                      updateSetting({ 'stats.radarMode': mode.id })
+                    }}
+                  >
+                    <Text size={13} color={radarMode === mode.id ? theme['c-primary'] : theme['c-font']}>{mode.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ) : null}
           <View style={[styles.card, { backgroundColor: theme['c-primary-background'] }]}>
             {chartsReady ? (
               <RadarChart data={radarDataByMode[radarMode] ?? []} size={240} />
@@ -942,7 +965,7 @@ const Stats = memo(() => {
             )}
           </View>
         </ScrollView>
-  ), [theme, overview, monthOverview, yearOverview, topSongs, topArtists, recentEvents, durationSongs, hourCounts, habits, radarDataByMode, radarMode, activityMode, monthCurrent, monthPrevious, yearCurrent, yearPrevious, sourceDistribution, chartsReady, monthFavorites, longTerm, showDetail, rankSongs, rankArtists, detailMap, handlePlaySong, handlePlayAllSongs, handleRandomPlaySongs, handlePlayAllEvents, handleRandomPlayEvents])
+  ), [theme, overview, monthOverview, yearOverview, topSongs, topArtists, recentEvents, durationSongs, hourCounts, habits, radarDataByMode, radarMode, radarPickerOpen, activityMode, monthCurrent, monthPrevious, yearCurrent, yearPrevious, sourceDistribution, chartsReady, monthFavorites, longTerm, showDetail, rankSongs, rankArtists, detailMap, handlePlaySong, handlePlayAllSongs, handleRandomPlaySongs, handlePlayAllEvents, handleRandomPlayEvents])
 
   const calendarPage = useMemo(() => (
         <ScrollView
@@ -1002,29 +1025,6 @@ const Stats = memo(() => {
       {mountedTabs.has('calendar') ? <TabPageShell active={activeTab === 'calendar'}>{calendarPage}</TabPageShell> : null}
       {mountedTabs.has('config') ? <TabPageShell active={activeTab === 'config'}>{configPage}</TabPageShell> : null}
 
-      <Popup ref={radarPopupRef} title="切换画像">
-        <View style={styles.radarPopupContent}>
-          {RADAR_MODES.map((mode) => (
-            <TouchableOpacity
-              key={mode.id}
-              style={[
-                styles.radarPopupOption,
-                {
-                  borderColor: radarMode === mode.id ? theme['c-primary'] : theme['c-border-background'],
-                  backgroundColor: radarMode === mode.id ? theme['c-primary-alpha-900'] : 'transparent',
-                },
-              ]}
-              onPress={() => {
-                setRadarMode(mode.id)
-                updateSetting({ 'stats.radarMode': mode.id })
-                radarPopupRef.current?.setVisible(false)
-              }}
-            >
-              <Text size={13} color={radarMode === mode.id ? theme['c-primary'] : theme['c-font']}>{mode.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Popup>
     </View>
   )
 })
@@ -1255,15 +1255,17 @@ const styles = createStyle({
   rankValueText: {
     fontWeight: '700',
   },
-  radarPopupContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
+  radarPickerCard: {
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 16,
+  },
+  radarPickerContent: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  radarPopupOption: {
+  radarPickerOption: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 14,

@@ -24,6 +24,7 @@ import { useTheme } from '@/store/theme/hook'
 import OneDrive from '../Views/OneDrive'
 import WebDAV from '../Views/WebDAV'
 import Stats from '../Views/Stats'
+import HomeView from '../Views/Home'
 
 const hideKeys = ['list.isShowAlbumName', 'list.isShowInterval', 'theme.fontShadow'] as Readonly<
   Array<keyof LX.AppSetting>
@@ -413,6 +414,40 @@ const WebDAVPage = () => {
   return visible ? component : null
 }
 
+const HomePage = () => {
+  const [visible, setVisible] = useState(commonState.navActiveId == 'nav_home')
+  const component = useMemo(() => <HomeView />, [])
+  useEffect(() => {
+    const handleNavIdUpdate = (id: CommonState['navActiveId']) => {
+      if (id == 'nav_home') {
+        requestAnimationFrame(() => {
+          setVisible(true)
+        })
+      }
+    }
+    const handleHide = () => {
+      if (commonState.navActiveId != 'nav_setting') return
+      setVisible(false)
+    }
+    const handleConfigUpdated = (keys: Array<keyof LX.AppSetting>) => {
+      if (keys.some((k) => hideKeys.includes(k))) handleHide()
+    }
+    global.state_event.on('navActiveIdUpdated', handleNavIdUpdate)
+    global.state_event.on('themeUpdated', handleHide)
+    global.state_event.on('languageChanged', handleHide)
+    global.state_event.on('configUpdated', handleConfigUpdated)
+
+    return () => {
+      global.state_event.off('navActiveIdUpdated', handleNavIdUpdate)
+      global.state_event.off('themeUpdated', handleHide)
+      global.state_event.off('languageChanged', handleHide)
+      global.state_event.off('configUpdated', handleConfigUpdated)
+    }
+  }, [])
+
+  return visible ? component : null
+}
+
 const StatsPage = () => {
   const [visible, setVisible] = useState(commonState.navActiveId == 'nav_stats')
   const component = useMemo(() => <Stats />, [])
@@ -589,6 +624,7 @@ const Main = () => {
   // 根据 visibleNavs 动态渲染 PagerView 的子组件
   const pages = useMemo(() => {
     const pageComponents: Partial<Record<NAV_ID_Type, ReactNode>> = {
+      nav_home: <HomePage />,
       nav_search: <SearchPage />,
       nav_songlist: <SongListPage />,
       nav_top: <LeaderboardPage />,

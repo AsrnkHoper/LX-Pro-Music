@@ -24,6 +24,7 @@ import { createStyle } from '@/utils/tools'
 
 import IsStartupAutoPlay from './settings/Basic/IsStartupAutoPlay'
 import IsHomePageScroll from './settings/Basic/IsHomePageScroll'
+import StartupNav from './settings/Basic/StartupNav'
 import IsUseSystemFileSelector from './settings/Basic/IsUseSystemFileSelector'
 import IsAlwaysKeepStatusbarHeight from './settings/Basic/IsAlwaysKeepStatusbarHeight'
 import DrawerLayoutPosition from './settings/Basic/DrawerLayoutPosition'
@@ -125,6 +126,7 @@ interface SettingItem {
 const SETTING_ITEMS: SettingItem[] = [
   { id: 'startup_auto_play', category: 'basic', keywords: ['启动', '自动播放', 'startup', 'auto play'], component: IsStartupAutoPlay },
   { id: 'home_page_scroll', category: 'basic', keywords: ['每日推荐', '首页', '滑动', 'home', 'scroll'], component: IsHomePageScroll },
+  { id: 'startup_nav', category: 'basic', keywords: ['启动', '主页', '打开', '启动页面', 'startup', 'home'], component: StartupNav },
   { id: 'system_file_selector', category: 'basic', keywords: ['文件选择器', '系统', 'file selector'], component: IsUseSystemFileSelector },
   { id: 'statusbar_height', category: 'basic', keywords: ['状态栏', 'statusbar'], component: IsAlwaysKeepStatusbarHeight },
   { id: 'drawer_position', category: 'basic', keywords: ['抽屉', '侧边栏', 'drawer'], component: DrawerLayoutPosition },

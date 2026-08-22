@@ -114,6 +114,7 @@ export const storageDataPrefixOld = {
 export const APP_PROVIDER_NAME = 'com.lxnetease.music.mobile.provider'
 
 export const NAV_MENUS = [
+  { id: 'nav_home', icon: 'home' },
   { id: 'nav_search', icon: 'search-2' },
   { id: 'nav_play_history', icon: 'music_time' },
   { id: 'nav_songlist', icon: 'album' },

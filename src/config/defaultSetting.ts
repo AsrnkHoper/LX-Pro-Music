@@ -26,7 +26,11 @@ const defaultSetting: LX.AppSetting = {
   'common.aiTone': 'friend',
   'common.aiModel': '',
 
+  'common.oobeFinished': false,
+  'common.startupNavId': 'nav_home',
+
   'common.navStatus': {
+    nav_home: true,
     nav_songlist: true,
     nav_top: true,
     nav_love: true,
@@ -40,6 +44,7 @@ const defaultSetting: LX.AppSetting = {
   },
 
   'common.navOrder': [
+    'nav_home',
     'nav_search',
     'nav_play_history',
     'nav_songlist',

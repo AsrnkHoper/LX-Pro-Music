@@ -13,6 +13,7 @@ import PlayHistory from '../Views/PlayHistory'
 import OneDrive from '../Views/OneDrive'
 import WebDAV from '../Views/WebDAV'
 import Stats from '../Views/Stats'
+import HomeView from '../Views/Home'
 
 const Main = () => {
   const [id, setId] = useState(commonState.navActiveId)
@@ -31,6 +32,8 @@ const Main = () => {
 
   const component = useMemo(() => {
     switch (id) {
+      case 'nav_home':
+        return <HomeView />
       case 'nav_play_history':
         return <PlayHistory />
       case 'nav_daily_rec':

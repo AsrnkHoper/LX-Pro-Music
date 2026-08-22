@@ -8,9 +8,9 @@ import { setLanguage as applyLanguage } from '@/lang/i18n'
 import settingActions from '@/store/setting/action'
 import settingState from '@/store/setting/state'
 import commonActions from '@/store/common/action'
-import commonState, { type InitState as CommonStateType } from '@/store/common/state'
+import commonState from '@/store/common/state'
 
-import { storageDataPrefix } from '@/config/constant'
+import { COMPONENT_IDS, storageDataPrefix } from '@/config/constant'
 import { saveData } from '@/plugins/storage'
 import { throttle } from '@/utils/common'
 import {
@@ -77,7 +77,7 @@ export const setStatusbarHeight = (size: number) => {
   commonActions.setStatusbarHeight(size)
 }
 
-export const setComponentId = (name: keyof CommonStateType['componentIds'], id: string) => {
+export const setComponentId = (name: COMPONENT_IDS, id: string) => {
   commonActions.setComponentId(name as any, id)
 }
 export const removeComponentId = (name: string) => {

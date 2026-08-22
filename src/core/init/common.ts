@@ -2,7 +2,7 @@
 // import commonActions from '@/store/common/action'
 import playerState from '@/store/player/state'
 import { prefetch } from '@/components/common/ImageBackground'
-import { setBgPic } from '@/core/common'
+import { setBgPic, setNavActiveId } from '@/core/common'
 import wyUserApi from '@/utils/musicSdk/wy/user';
 import { setWyFollowedArtists, setWyLikedSongs, setWySubscribedAlbums } from '@/store/user/action';
 import { toast } from '@/utils/tools';
@@ -77,12 +77,12 @@ export default async (setting: LX.AppSetting) => {
     if (cookie) {
       console.log('正在刷新网易云数据...');
       wyUserApi.getUid(cookie)
-        .then(uid => Promise.all([
+        .then((uid: any) => Promise.all([
           wyUserApi.getLikedSongList(uid, cookie),
           wyUserApi.getAllSublist(),
           wyUserApi.getAllSubAlbumList(),
         ]))
-        .then(([likedIds, followedArtists, subscribedAlbums]) => {
+        .then(([likedIds, followedArtists, subscribedAlbums]: [any, any, any]) => {
           setWyLikedSongs(likedIds);
           setWyFollowedArtists(followedArtists);
           setWySubscribedAlbums(subscribedAlbums);
@@ -93,6 +93,10 @@ export default async (setting: LX.AppSetting) => {
     } else {
     }
   };
+  if (setting['common.startupNavId']) {
+    setNavActiveId(setting['common.startupNavId'])
+  }
+
   handlePicUpdate()
   global.state_event.on('playerMusicInfoChanged', handlePicUpdate)
   global.state_event.on('configUpdated', handleConfigUpdate)
