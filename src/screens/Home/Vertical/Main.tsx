@@ -570,7 +570,7 @@ const Main = () => {
   useEffect(() => {
     const handleUpdate = (id: CommonState['navActiveId']) => {
       setActiveNavIdState(id)
-      pagerViewRef.current?.setScrollEnabled(!!settingState.setting['common.homePageScroll'] && id !== 'nav_play_history');
+      pagerViewRef.current?.setScrollEnabled(false);
       let index = viewMap[id];
       if (index == null && visibleNavs.length > 0) {
         index = 0;
@@ -585,7 +585,7 @@ const Main = () => {
       setting: Partial<LX.AppSetting>
     ) => {
       if (!keys.includes('common.homePageScroll')) return;
-      pagerViewRef.current?.setScrollEnabled(!!setting['common.homePageScroll'] && commonState.navActiveId !== 'nav_play_history');
+      pagerViewRef.current?.setScrollEnabled(false);
     };
 
     global.state_event.on('navActiveIdUpdated', handleUpdate);
