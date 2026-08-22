@@ -23,6 +23,7 @@ export default {
     }
   },
   setNavActiveId(id: InitState['navActiveId']) {
+    if (state.navActiveId != id) state.previousNavActiveId = state.navActiveId
     state.navActiveId = id
     if (id != 'nav_setting' && id != 'nav_play_history') state.lastNavActiveId = id
     global.state_event.navActiveIdUpdated(id)

@@ -64,6 +64,12 @@ export default ({ componentId }: Props) => {
         return true
       }
 
+      // 从主页/其他入口进入非启动页时,先返回上一页,而不是直接提示退出
+      if (commonState.navActiveId !== commonState.previousNavActiveId) {
+        setNavActiveId(commonState.previousNavActiveId)
+        return true
+      }
+
       const now = Date.now()
       if (lastBackPressed.current && now - lastBackPressed.current < 2000) {
         BackHandler.exitApp()

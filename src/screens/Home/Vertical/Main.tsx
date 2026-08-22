@@ -518,32 +518,28 @@ const Main = () => {
     })
   ).current;
   const [activeNavId, setActiveNavIdState] = useState(commonState.navActiveId)
-  const navStatus = useSettingValue('common.navStatus'); // 获取菜单显示状态
   const navOrder = useSettingValue('common.navOrder'); // 获取菜单排序
 
-  // 根据 navOrder 和 navStatus 动态生成可见的菜单项
-  const visibleNavs = useMemo(() => {
-    // 从 navOrder 中筛选，然后关联到 NAV_MENUS 中的信息
-    return navOrder.filter(id => isMenuVisible(id, navStatus)).map(id => {
-      const menuInfo = NAV_MENUS.find(menu => menu.id === id);
-      return menuInfo || { id, icon: 'unknown' };
-    });
-  }, [navStatus, navOrder]);
+  // PagerView 页面列表与侧边栏可见性解耦:
+  // 侧边栏隐藏的页面仍保留在 PagerView 中,程序内跳转(如主页点歌单)依旧可达
+  const pageNavs = useMemo(() => {
+    return navOrder.filter(id => id !== 'nav_play_history')
+  }, [navOrder])
 
   const { viewMap, indexMap } = useMemo(() => {
     const viewMap: Partial<Record<NAV_ID_Type, number>> = {};
     const indexMap: NAV_ID_Type[] = [];
-    visibleNavs.forEach((nav, index) => {
-      viewMap[nav.id] = index;
-      indexMap.push(nav.id);
+    pageNavs.forEach((id, index) => {
+      viewMap[id] = index;
+      indexMap.push(id);
     });
     return { viewMap, indexMap };
-  }, [visibleNavs]);
+  }, [pageNavs]);
 
-  // 获取初始索引，如果当前 activeNavId 不在可见菜单中，则使用第一个可见菜单的索引
+  // 获取初始索引，如果当前 activeNavId 不在页面列表中，则使用第一个页面
   const getInitialIndex = () => {
     let idx = viewMap[commonState.navActiveId];
-    if (idx == null && visibleNavs.length > 0) {
+    if (idx == null && pageNavs.length > 0) {
       idx = 0;
     }
     return idx ?? 0;
@@ -569,45 +565,28 @@ const Main = () => {
     []
   );
 
-  // 当可见菜单改变时，确保当前页索引是有效的
+  // 当页面列表改变时，确保当前页索引是有效的
   useEffect(() => {
     let index = viewMap[commonState.navActiveId];
-    if (index == null && visibleNavs.length > 0) {
+    if (index == null && commonState.navActiveId !== 'nav_play_history' && pageNavs.length > 0) {
       index = 0;
       activeIndexRef.current = index;
-      if (visibleNavs[0]) {
-        setNavActiveId(visibleNavs[0].id);
+      if (pageNavs[0]) {
+        setNavActiveId(pageNavs[0]);
       }
     } else if (index != null) {
       activeIndexRef.current = index;
       pagerViewRef.current?.setPageWithoutAnimation(index);
     }
-  }, [viewMap, visibleNavs]);
-
-  // 当菜单显示状态改变时，检查当前活跃菜单是否仍可见
-  useEffect(() => {
-    const handleConfigUpdated = (keys: Array<keyof LX.AppSetting>) => {
-      if (keys.includes('common.navStatus')) {
-        // 检查当前活跃菜单是否可见
-        const isActiveVisible = isMenuVisible(commonState.navActiveId, navStatus);
-        if (!isActiveVisible && visibleNavs.length > 0) {
-          // 如果不可见，切换到第一个可见菜单
-          setNavActiveId(visibleNavs[0].id);
-        }
-      }
-    };
-    global.state_event.on('configUpdated', handleConfigUpdated);
-    return () => {
-      global.state_event.off('configUpdated', handleConfigUpdated);
-    };
-  }, [navStatus, visibleNavs]);
+  }, [viewMap, pageNavs]);
 
   useEffect(() => {
     const handleUpdate = (id: CommonState['navActiveId']) => {
       setActiveNavIdState(id)
       pagerViewRef.current?.setScrollEnabled(false);
+      if (id === 'nav_play_history') return
       let index = viewMap[id];
-      if (index == null && visibleNavs.length > 0) {
+      if (index == null && pageNavs.length > 0) {
         index = 0;
       }
       if (index != null && activeIndexRef.current !== index) {
@@ -619,7 +598,7 @@ const Main = () => {
     return () => {
       global.state_event.off('navActiveIdUpdated', handleUpdate);
     };
-  }, [viewMap, visibleNavs]);
+  }, [viewMap, pageNavs]);
 
   // 根据 visibleNavs 动态渲染 PagerView 的子组件
   const pages = useMemo(() => {
@@ -639,12 +618,12 @@ const Main = () => {
       nav_setting: <SettingPage />,
     };
 
-    return visibleNavs.map(nav => (
-      <View collapsable={false} key={nav.id} style={styles.pageStyle}>
-        {pageComponents[nav.id] ?? null}
+    return pageNavs.map(id => (
+      <View collapsable={false} key={id} style={styles.pageStyle}>
+        {pageComponents[id] ?? null}
       </View>
     ));
-  }, [visibleNavs]);
+  }, [pageNavs]);
 
   return (
     <View style={styles.container} {...drawerPanResponder.panHandlers}>

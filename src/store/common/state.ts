@@ -6,6 +6,7 @@ export interface InitState {
   componentIds: Array<{ name: COMPONENT_IDS; id: string }>
   navActiveId: NAV_ID_Type
   lastNavActiveId: NAV_ID_Type
+  previousNavActiveId: NAV_ID_Type
   sourceNames: Record<LX.OnlineSource | 'all', string>
   bgPic: string | null
   isLandscapeImmersion: boolean
@@ -19,6 +20,7 @@ const state: InitState = {
   componentIds: [],
   navActiveId: 'nav_home',
   lastNavActiveId: 'nav_home',
+  previousNavActiveId: 'nav_home',
   sourceNames: initData as InitState['sourceNames'],
   bgPic: null,
   isLandscapeImmersion: false,

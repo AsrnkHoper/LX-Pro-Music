@@ -18,6 +18,9 @@ import {
 
 import Text from '@/components/common/Text'
 import Section from './components/Section'
+import { useBackHandler } from '@/utils/hooks/useBackHandler'
+import commonState from '@/store/common/state'
+import { setNavActiveId } from '@/core/common'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
@@ -227,6 +230,26 @@ const SettingsView = forwardRef<MainType, SettingsViewProps>(({ showCategoryNav 
   useEffect(() => {
     if (activeId) global.lx.settingActiveId = activeId
   }, [activeId])
+
+  useBackHandler(
+    useCallback(() => {
+      if (commonState.componentIds.length > 1) return false
+      if (commonState.navActiveId !== 'nav_setting') return false
+      // 搜索状态:先清空搜索
+      if (searchText) {
+        setSearchText('')
+        return true
+      }
+      // 竖屏子级设置页:先退回父级分组列表
+      if (showCategoryNav && activeId) {
+        setActiveId(null)
+        return true
+      }
+      // 设置根级:返回进入设置前的页面
+      setNavActiveId(commonState.lastNavActiveId)
+      return true
+    }, [searchText, showCategoryNav, activeId])
+  )
 
   useEffect(() => {
     Animated.timing(topBtnOpacity, {
